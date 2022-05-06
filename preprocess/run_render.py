@@ -6,7 +6,7 @@ from subprocess import DEVNULL, STDOUT, check_call
 processes = set()
 max_processes = 8
 categories = ['03001627', '04379243']
-directories = ['../datasets/ShapeNetCore.v2/03001627', '../datasets/ShapeNetCore.v2/04379243']
+directories = ['../datasets/text2shape-data/ShapeNetCore.v2/03001627', '../datasets/text2shape-data/ShapeNetCore.v2/04379243']
 for idx, directory in enumerate(directories):
     subdirs = os.listdir(directory)
     for subdir in tqdm(subdirs):

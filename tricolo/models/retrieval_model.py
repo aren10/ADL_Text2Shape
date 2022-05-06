@@ -96,8 +96,8 @@ class ModelCLR(nn.Module):
 
         N = embed_inputs.shape[1]
 
-        #h0 = torch.zeros(2, N, 128).cuda()
-        h0 = torch.zeros(2, N, 128)
+        h0 = torch.zeros(2, N, 128).cuda()
+        # h0 = torch.zeros(2, N, 128)
         output, hidden = self.text_model(embed_inputs, h0)
         out_emb = torch.tanh(self.text_fc(torch.cat((hidden[-2,:,:], hidden[-1,:,:]), dim = 1)))
         return out_emb

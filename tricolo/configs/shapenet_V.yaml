@@ -18,7 +18,7 @@ model:
   vocab_size: 3588
 
 dataset:
-  num_workers: 7
+  num_workers: 4
   train_json_file: 'datasets/text2shape-data/shapenet/train_map.jsonl'
   val_json_file: 'datasets/text2shape-data/shapenet/val_map.jsonl'
   test_json_file: 'datasets/text2shape-data/shapenet/test_map.jsonl'

@@ -49,16 +49,18 @@ class ClrDataset(Dataset):
             voxels[:3, coords[i, 0], coords[i, 1], coords[i, 2]] = colors[i]
             voxels[-1, coords[i, 0], coords[i, 1], coords[i, 2]] = 1
 
-        images = data['images']
+        # images = data['images']
+        images = np.zeros((12, 3, self.image_size, self.image_size)) # For Debugging Purpose. We don't need image modality so far.
         #print(images == [])
-        if self.image_size != 224:
-            resized = []
-            for i in range(images.shape[0]):
-                image = images[i].transpose(1, 2, 0)
-                image = cv.resize(image, dsize=(self.image_size, self.image_size))
-                resized.append(image)
-            resized = np.array(resized)
-            images = resized.transpose(0, 3, 1, 2)
+        # if self.image_size != 224:
+        #     resized = []
+        #     for i in range(images.shape[0]):
+        #         image = images[i].transpose(1, 2, 0)
+        #         image = cv.resize(image, dsize=(self.image_size, self.image_size))
+        #         resized.append(image)
+        #     resized = np.array(resized)
+        #     images = resized.transpose(0, 3, 1, 2)
+            
         
         text = self.clr_frame[idx]['caption']
         text = text.replace("\n", "")

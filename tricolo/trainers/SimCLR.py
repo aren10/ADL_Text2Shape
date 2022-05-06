@@ -35,8 +35,7 @@ class SimCLR(object):
     def __init__(self, dataset, config, param_id=-1):
         self.dset = config['dset']
         self.config = config
-        #self.device = 'cuda'
-        self.device = 'cpu'
+        self.device = 'cuda'
         if self.config['train']:
             log_dir = 'logs/retrieval/' + datetime.datetime.now().strftime("%b%d_%H-%M-%S")
             if param_id != -1:
@@ -107,6 +106,11 @@ class SimCLR(object):
                     loss = self.nt_xent_criterion(z_images, zls)
                 loss.backward()
                 optimizer.step()
+
+                # For Debug Purpose
+                cmd = 'nvidia-smi'
+                returned_value = os.system(cmd)  # returns the exit code in unix
+                print(returned_value)
 
                 if n_iter % self.config['log_every_n_steps'] == 0:
                     self.writer.add_scalar('train_loss', loss, global_step=n_iter)

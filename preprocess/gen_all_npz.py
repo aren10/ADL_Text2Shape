@@ -90,21 +90,21 @@ def save_npz(obj):
     '''
     ######################################################################################################
     
-    view_ids = ['{}.png'.format(i) for i in range(0, 12)]
-    pre_path = '../datasets/224/{}/{}/'.format(category, model_id)
-    img_paths = [pre_path+view_id for view_id in view_ids]
-    images = []
-    for img_path in img_paths:
-        img = np.array(cv.imread(img_path)) #c5c4e6110fbbf5d3d83578ca09f86027 cannot be rendered into differnent views' png
-        if img is None:
-            img = np.zeros((224, 224, 3))
-            print("_____________________0______________________")
-        normalized_img = img.astype(np.float32) / 255.
-        images.append(normalized_img)
+    # view_ids = ['{}.png'.format(i) for i in range(0, 12)]
+    # pre_path = '../datasets/224/{}/{}/'.format(category, model_id)
+    # img_paths = [pre_path+view_id for view_id in view_ids]
+    # images = []
+    # for img_path in img_paths:
+    #     img = np.array(cv.imread(img_path)) #c5c4e6110fbbf5d3d83578ca09f86027 cannot be rendered into differnent views' png
+    #     if img is None:
+    #         img = np.zeros((224, 224, 3))
+    #         print("_____________________0______________________")
+    #     normalized_img = img.astype(np.float32) / 255.
+    #     images.append(normalized_img)
     
-    images = np.array(images).transpose(0, 3, 1, 2)
+    # images = np.array(images).transpose(0, 3, 1, 2)
     
-    np.savez_compressed(save_dir + '/' + model_id + '.npz', voxel32=voxel32, voxel64=voxel64, voxel128=voxel128, images=images)
+    np.savez_compressed(save_dir + '/' + model_id + '.npz', voxel32=voxel32, voxel64=voxel64, voxel128=voxel128, images=voxel128)
 
 if __name__== '__main__':
     if not os.path.exists('../datasets/all_npz'):
@@ -114,7 +114,7 @@ if __name__== '__main__':
     val_json_file =     '../datasets/text2shape-data/shapenet/val_map.jsonl'
     test_json_file =    '../datasets/text2shape-data/shapenet/test_map.jsonl'
     voxel32_root_dir =  '../datasets/text2shape-data/shapenet/nrrd_256_filter_div_32_solid'
-    voxel64_root_dir = '/Users/adamren/Desktop/tricolo/datasets/text2shape-data/shapenet/nrrd_256_filter_div_64_solid'
+    voxel64_root_dir = '../datasets/text2shape-data/shapenet/nrrd_256_filter_div_64_solid'
     #voxel64_root_dir =  '../datasets/text2shape-data/shapenet/nrrd_256_filter_div_64_solid'
     voxel128_root_dir = '../datasets/text2shape-data/shapenet/nrrd_256_filter_div_128_solid'
 
