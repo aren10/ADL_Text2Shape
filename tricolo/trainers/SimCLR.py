@@ -45,6 +45,7 @@ class SimCLR(object):
         self.nt_xent_criterion = NTXentLoss(self.device, config['batch_size'], **config['loss'])
         
         self.use_voxel = config['model']['use_voxel']
+        self.use_struct = config['model']['use_struct']
         self.tri_modal = config['model']['tri_modal']
         self.num_images = config['model']['num_images']
         self.multiplier = 12 // self.num_images
@@ -71,7 +72,7 @@ class SimCLR(object):
 
                 xls = data_dict['tokens'].to(self.device)
 
-                voxels, images = None, None
+                voxels, images, struct = None, None, None
 
                 if self.tri_modal:
                     if self.config['sparse_model']:
@@ -88,11 +89,21 @@ class SimCLR(object):
                         voxels['feats'] = data_dict['voxels']['feats'].to(self.device)
                     else:
                         voxels = data_dict['voxels'].to(self.device)
+                elif self.use_struct:
+                    if self.config['sparse_model']:
+                        struct_tree = {}
+                        struct_tree['locs'] = data_dict['voxels']['locs'].to(self.device)
+                        struct_tree['feats'] = data_dict['voxels']['feats'].to(self.device)
+                    else:
+                        struct_tree = []
+                        struct_tree_ = data_dict['struct_tree']
+                        for obj in struct_tree_:
+                            struct_tree.append(obj.to(self.device))
                 else:
                     images = data_dict['images'][:, ::self.multiplier].to(self.device)
 
                 optimizer.zero_grad()
-                z_voxels, z_images, zls = model(voxels, images, xls)
+                z_voxels, z_struct, z_images, zls = model(voxels, struct_tree, images, xls)
                 zls = F.normalize(zls, dim=1)
                 if self.tri_modal:
                     z_voxels = F.normalize(z_voxels, dim=1)
@@ -101,6 +112,9 @@ class SimCLR(object):
                 elif self.use_voxel:
                     z_voxels = F.normalize(z_voxels, dim=1)
                     loss = self.nt_xent_criterion(z_voxels, zls)
+                elif self.use_struct:
+                    z_struct = F.normalize(z_struct, dim=1)
+                    loss = self.nt_xent_criterion(z_struct, zls)
                 else:
                     z_images = F.normalize(z_images, dim=1)
                     loss = self.nt_xent_criterion(z_images, zls)
@@ -108,9 +122,9 @@ class SimCLR(object):
                 optimizer.step()
 
                 # For Debug Purpose
-                cmd = 'nvidia-smi'
-                returned_value = os.system(cmd)  # returns the exit code in unix
-                print(returned_value)
+                # cmd = 'nvidia-smi'
+                # returned_value = os.system(cmd)  # returns the exit code in unix
+                # print(returned_value)
 
                 if n_iter % self.config['log_every_n_steps'] == 0:
                     self.writer.add_scalar('train_loss', loss, global_step=n_iter)
@@ -182,10 +196,20 @@ class SimCLR(object):
                         voxels['feats'] = data_dict['voxels']['feats'].to(self.device)
                     else:
                         voxels = data_dict['voxels'].to(self.device)
+                elif self.use_struct:
+                    if self.config['sparse_model']:
+                        struct_tree = {}
+                        struct_tree['locs'] = data_dict['voxels']['locs'].to(self.device)
+                        struct_tree['feats'] = data_dict['voxels']['feats'].to(self.device)
+                    else:
+                        struct_tree = []
+                        struct_tree_ = data_dict['struct_tree']
+                        for obj in struct_tree_:
+                            struct_tree.append(obj.to(self.device))
                 else:
                     images = data_dict['images'][:, ::self.multiplier].to(self.device)
 
-                z_voxels, z_images, zls = model(voxels, images, xls)
+                z_voxels, z_struct, z_images, zls = model(voxels, struct_tree, images, xls)
                 zls = F.normalize(zls, dim=1)
                 if self.tri_modal:
                     z_voxels = F.normalize(z_voxels, dim=1)
@@ -194,6 +218,9 @@ class SimCLR(object):
                 elif self.use_voxel:
                     z_voxels = F.normalize(z_voxels, dim=1)
                     loss = self.nt_xent_criterion(z_voxels, zls)
+                elif self.use_struct:
+                    z_struct = F.normalize(z_struct, dim=1)
+                    loss = self.nt_xent_criterion(z_struct, zls)
                 else:
                     z_images = F.normalize(z_images, dim=1)
                     loss = self.nt_xent_criterion(z_images, zls)
@@ -250,10 +277,20 @@ class SimCLR(object):
                         voxels['feats'] = data_dict['voxels']['feats'].to(self.device)
                     else:
                         voxels = data_dict['voxels'].to(self.device)
+                elif self.use_struct:
+                    if self.config['sparse_model']:
+                        struct_tree = {}
+                        struct_tree['locs'] = data_dict['voxels']['locs'].to(self.device)
+                        struct_tree['feats'] = data_dict['voxels']['feats'].to(self.device)
+                    else:
+                        struct_tree = []
+                        struct_tree_ = data_dict['struct_tree']
+                        for obj in struct_tree_:
+                            struct_tree.append(obj.to(self.device))
                 else:
                     images = data_dict['images'][:, ::self.multiplier].to(self.device)
 
-                z_voxels, z_images, zls = model(voxels, images, xls) #网络运行来计算embedding（重要）
+                z_voxels, z_struct, z_images, zls = model(voxels, struct_tree, images, xls)
                 zls = F.normalize(zls, dim=1)
                 if self.tri_modal:
                     z_voxels = F.normalize(z_voxels, dim=1)
@@ -264,6 +301,9 @@ class SimCLR(object):
                 elif self.use_voxel:
                     z_voxels = F.normalize(z_voxels, dim=1)
                     shape_embeds.append(z_voxels.detach().cpu().numpy())
+                elif self.use_struct:
+                    z_struct = F.normalize(z_struct, dim=1)
+                    shape_embeds.append(z_struct.detach().cpu().numpy())
                 else:
                     z_images = F.normalize(z_images, dim=1)
                     shape_embeds.append(z_images.detach().cpu().numpy())

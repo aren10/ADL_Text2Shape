@@ -7,9 +7,10 @@ import torch.nn as nn
 import torch.nn.functional as F
 
 from tricolo.models.models import cnn_encoder, cnn_encoder32, cnn_encoder_sparse, SVCNN, MVCNN
+from tricolo.models.structurenet_models.model_pc import RecursiveEncoder
 
 class ModelCLR(nn.Module):
-    def __init__(self, dset, voxel_size, sparse_model, out_dim, use_voxel, tri_modal, num_images, image_cnn, pretraining, vocab_size):
+    def __init__(self, dset, voxel_size, sparse_model, out_dim, use_voxel, use_struct, tri_modal, num_images, image_cnn, pretraining, vocab_size):
         super(ModelCLR, self).__init__()
 
         self.dset = dset
@@ -18,6 +19,7 @@ class ModelCLR(nn.Module):
         self.out_dim = out_dim
         self.cnn_name = image_cnn
         self.use_voxel = use_voxel
+        self.use_struct = use_struct
         self.tri_modal = tri_modal
         self.voxel_size = voxel_size
         self.num_images = num_images
@@ -26,7 +28,9 @@ class ModelCLR(nn.Module):
         
         self.text_model, self.text_fc = self._get_text_encoder()
         self.embedding_layer = nn.Embedding(vocab_size, 256, padding_idx=0)
-        self.voxel_model, self.voxel_fc, self.image_model, self.image_fc = self._get_res_encoder()
+        self.voxel_model, self.voxel_fc, \
+            self.struct_model, self.struct_fc, \
+                self.image_model, self.image_fc = self._get_res_encoder()
 
     def _get_text_encoder(self):
         print("Text feature extractor: BiGRU")
@@ -39,6 +43,8 @@ class ModelCLR(nn.Module):
         voxel_fc = None
         image_model = None
         image_fc = None
+        struct_model = None
+        struct_fc = None
 
         if self.dset == 'shapenet':
             if self.tri_modal:
@@ -59,29 +65,36 @@ class ModelCLR(nn.Module):
                 else:
                     voxel_model = cnn_encoder(self.voxel_size, self.ef_dim, self.z_dim)
                 voxel_fc = nn.Sequential(nn.Linear(self.z_dim,self.out_dim),nn.ReLU(),nn.Linear(self.out_dim,self.out_dim))
+            elif self.use_struct:
+                print('Training Bi-Modal Model - StructureNet')
+                if self.sparse_model:
+                    struct_model = cnn_encoder_sparse(self.voxel_size, self.ef_dim, self.z_dim)
+                else:
+                    struct_model = RecursiveEncoder()
+                struct_fc = nn.Sequential(nn.Linear(struct_model.conf.feature_size, self.out_dim),nn.ReLU(),nn.Linear(self.out_dim,self.out_dim))
             else:
                 print('Training Bi-Modal Model')
                 svcnn = SVCNN(self.z_dim, pretraining=self.pretraining, cnn_name=self.cnn_name)
                 image_model = MVCNN(self.z_dim, svcnn, cnn_name=self.cnn_name, num_views=self.num_images)
                 image_fc = nn.Sequential(nn.Linear(self.z_dim,self.out_dim),nn.ReLU(),nn.Linear(self.out_dim,self.out_dim))
-        elif self.dset == 'primitives':
-            print('Training Primitives')
-            if self.tri_modal:
-                raise('Implement Other Dataset')
-            elif self.use_voxel:
-                voxel_model = cnn_encoder32(self.ef_dim, self.z_dim)
-                voxel_fc = nn.Sequential(nn.Linear(self.z_dim,self.out_dim),nn.ReLU(),nn.Linear(self.out_dim,self.out_dim))
-                print('Bi-Modal Voxel, Text')
-            else:
-                raise('Implement Other Dataset')
         else:
             raise('Implement Other Dataset')
-        return voxel_model, voxel_fc, image_model, image_fc
+        return voxel_model, voxel_fc, struct_model, struct_fc, image_model, image_fc
 
     def voxel_encoder(self, xis):
         h = self.voxel_model(xis)
         h.squeeze()
         x = self.voxel_fc(h)
+        return x
+
+    def struct_encoder(self, xis):
+        h_list = []
+        for obj in xis:
+            h = self.struct_model.encode_structure(obj)
+            h_list.append(h)
+
+        h_batch = torch.cat(h_list, dim=0)
+        x = self.struct_fc(h_batch)
         return x
 
     def image_encoder(self, xis):
@@ -102,7 +115,7 @@ class ModelCLR(nn.Module):
         out_emb = torch.tanh(self.text_fc(torch.cat((hidden[-2,:,:], hidden[-1,:,:]), dim = 1)))
         return out_emb
 
-    def forward(self, voxels, images, encoded_inputs):
+    def forward(self, voxels, struct_tree, images, encoded_inputs):
         z_voxels = None
         z_images = None
         if self.tri_modal:
@@ -111,9 +124,11 @@ class ModelCLR(nn.Module):
             z_images = self.image_encoder(images)
         elif self.use_voxel:
             z_voxels = self.voxel_encoder(voxels)
+        elif self.use_struct:
+            z_struct = self.struct_encoder(struct_tree)
         else:
             images = images.reshape(-1, images.shape[2], images.shape[3], images.shape[4])
             z_images = self.image_encoder(images)
 
         zls = self.text_encoder(encoded_inputs)
-        return z_voxels, z_images, zls
+        return z_voxels, z_struct, z_images, zls

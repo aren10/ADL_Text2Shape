@@ -1,0 +1,1 @@
+python run_retrieval.py --config_file tricolo/configs/shapenet_S.yaml

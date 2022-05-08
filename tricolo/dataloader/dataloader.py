@@ -1,8 +1,9 @@
 import torch
+import numpy as np
 from torch.utils.data import DataLoader
 from torch.utils.data._utils.collate import default_collate
 
-from tricolo.dataloader.dataset import ClrDataset, ClrDatasetPrimitives
+from tricolo.dataloader.dataset import ClrDataset
 
 def collate_fn(batch):
     default_collate_items = ['model_id', 'category', 'text', 'tokens', 'images']
@@ -24,29 +25,55 @@ def collate_fn(batch):
     return data
 
 class ClrDataLoader(object):
-    def __init__(self, dset, batch_size, sparse_model, num_workers, train_json_file, val_json_file, test_json_file, image_size, voxel_size, root_npz_file='./datasets/all_npz/'):
+    def __init__(self, dset, batch_size, sparse_model, num_workers, train_json_file, val_json_file, test_json_file, partnet_anno_path, image_size, voxel_size, root_npz_file='./datasets/all_npz/', root_partnet_file='./datasets/partnet/chair_hier'):
         self.batch_size = batch_size
         self.num_workers = num_workers
         self.train_json_file = train_json_file
         self.val_json_file = val_json_file
         self.test_json_file = test_json_file
+        self.partnet_anno_path = partnet_anno_path
         self.image_size = image_size
         self.voxel_size = voxel_size
         self.sparse_model = sparse_model
         self.root_npz_file = root_npz_file
+        self.root_partnet_file = root_partnet_file
         self.dset = dset
-        
+    
+    def collate_feats(self, b):
+        model_id_list = []
+        category_list = []
+        test_list = []
+        tokens_list = []
+        images_list = []
+        voxels_list = []
+        struct_tree_list = []
+        for model_id, category, text, tokens, images, voxels, struct_tree in b:
+            model_id_list.append(model_id)
+            category_list.append(category)
+            test_list.append(text)
+            tokens_list.append(tokens)
+            images_list.append(images)
+            voxels_list.append(voxels)
+            struct_tree_list.append(struct_tree)
+        tokens_array = torch.from_numpy(np.stack(tokens_list, axis=0))
+        images_array = torch.from_numpy(np.stack(images_list, axis=0))
+        voxels_array = torch.from_numpy(np.stack(voxels_list, axis=0))
+
+        data_dict = {'model_id': model_id_list,
+                    'category': category_list,
+                    'text': test_list,
+                    'tokens': tokens_array,
+                    'images': images_array,
+                    'voxels': voxels_array,
+                    'struct_tree': struct_tree_list}
+        return data_dict
+
     def get_data_loaders(self):
         if self.dset == 'shapenet':
             print('Using Shapenet Dataset')
-            train_dataset = ClrDataset(json_file=self.train_json_file, sparse_model=self.sparse_model, image_size=self.image_size, voxel_size=self.voxel_size, root_npz_file=self.root_npz_file)
-            valid_dataset = ClrDataset(json_file=self.val_json_file, sparse_model=self.sparse_model, image_size=self.image_size, voxel_size=self.voxel_size, root_npz_file=self.root_npz_file)
-            test_dataset = ClrDataset(json_file=self.test_json_file, sparse_model=self.sparse_model, image_size=self.image_size, voxel_size=self.voxel_size, root_npz_file=self.root_npz_file)
-        elif self.dset == 'primitives':
-            print('Using Primitives Dataset')
-            train_dataset = ClrDatasetPrimitives(json_file=self.train_json_file, voxel_root_dir=self.root_npz_file)
-            valid_dataset = ClrDatasetPrimitives(json_file=self.val_json_file, voxel_root_dir=self.root_npz_file)
-            test_dataset = ClrDatasetPrimitives(json_file=self.test_json_file, voxel_root_dir=self.root_npz_file)
+            train_dataset = ClrDataset(anno_path=self.partnet_anno_path, json_file=self.train_json_file, sparse_model=self.sparse_model, image_size=self.image_size, voxel_size=self.voxel_size, root_npz_file=self.root_npz_file, root_partnet_file=self.root_partnet_file)
+            valid_dataset = ClrDataset(anno_path=self.partnet_anno_path, json_file=self.val_json_file, sparse_model=self.sparse_model, image_size=self.image_size, voxel_size=self.voxel_size, root_npz_file=self.root_npz_file, root_partnet_file=self.root_partnet_file)
+            test_dataset = ClrDataset(anno_path=self.partnet_anno_path, json_file=self.test_json_file, sparse_model=self.sparse_model, image_size=self.image_size, voxel_size=self.voxel_size, root_npz_file=self.root_npz_file, root_partnet_file=self.root_partnet_file)
         else:
             raise('Implement Other Dataset')
 
@@ -55,9 +82,9 @@ class ClrDataLoader(object):
             valid_loader = DataLoader(valid_dataset, collate_fn=collate_fn, batch_size=self.batch_size, num_workers=self.num_workers, drop_last=True, shuffle=True)
             test_loader = DataLoader(test_dataset, collate_fn=collate_fn, batch_size=self.batch_size, num_workers=self.num_workers, drop_last=False, shuffle=True)
         else:
-            train_loader = DataLoader(train_dataset, batch_size=self.batch_size, num_workers=self.num_workers, drop_last=True, shuffle=True)
-            valid_loader = DataLoader(valid_dataset, batch_size=self.batch_size, num_workers=self.num_workers, drop_last=True, shuffle=True)
-            test_loader = DataLoader(test_dataset, batch_size=self.batch_size, num_workers=self.num_workers, drop_last=False, shuffle=True)
+            train_loader = DataLoader(train_dataset, batch_size=self.batch_size, num_workers=self.num_workers, drop_last=True, shuffle=True, collate_fn=self.collate_feats)
+            valid_loader = DataLoader(valid_dataset, batch_size=self.batch_size, num_workers=self.num_workers, drop_last=True, shuffle=True, collate_fn=self.collate_feats)
+            test_loader = DataLoader(test_dataset, batch_size=self.batch_size, num_workers=self.num_workers, drop_last=False, shuffle=True, collate_fn=self.collate_feats)
 
         print('Training file: {}, Size: {}'.format(self.train_json_file, len(train_loader.dataset)))
         print('Val file: {}, Size: {}'.format(self.val_json_file, len(valid_loader.dataset)))
