@@ -10,7 +10,7 @@ from tricolo.models.models import cnn_encoder, cnn_encoder32, cnn_encoder_sparse
 from tricolo.models.structurenet_models.model_pc import RecursiveEncoder
 
 class ModelCLR(nn.Module):
-    def __init__(self, dset, voxel_size, sparse_model, out_dim, use_voxel, use_struct, tri_modal, num_images, image_cnn, pretraining, vocab_size):
+    def __init__(self, dset, voxel_size, sparse_model, out_dim, use_voxel, use_struct, use_struct_pretrain, tri_modal, num_images, image_cnn, pretraining, vocab_size):
         super(ModelCLR, self).__init__()
 
         self.dset = dset
@@ -20,6 +20,7 @@ class ModelCLR(nn.Module):
         self.cnn_name = image_cnn
         self.use_voxel = use_voxel
         self.use_struct = use_struct
+        self.use_struct_pretrain = use_struct_pretrain
         self.tri_modal = tri_modal
         self.voxel_size = voxel_size
         self.num_images = num_images
@@ -70,7 +71,7 @@ class ModelCLR(nn.Module):
                 if self.sparse_model:
                     struct_model = cnn_encoder_sparse(self.voxel_size, self.ef_dim, self.z_dim)
                 else:
-                    struct_model = RecursiveEncoder()
+                    struct_model = RecursiveEncoder(pretrain=self.use_struct_pretrain)
                 struct_fc = nn.Sequential(nn.Linear(struct_model.conf.feature_size, self.out_dim),nn.ReLU(),nn.Linear(self.out_dim,self.out_dim))
             else:
                 print('Training Bi-Modal Model')
@@ -118,6 +119,7 @@ class ModelCLR(nn.Module):
     def forward(self, voxels, struct_tree, images, encoded_inputs):
         z_voxels = None
         z_images = None
+        z_struct = None
         if self.tri_modal:
             images = images.reshape(-1, images.shape[2], images.shape[3], images.shape[4])
             z_voxels = self.voxel_encoder(voxels)

@@ -10,8 +10,8 @@ sparse_model: False
 
 model:
   out_dim: 512
-  use_voxel: True
-  use_struct: False
+  use_voxel: False
+  use_struct: True
   use_struct_pretrain: False
   tri_modal: False
   num_images: 6
@@ -28,6 +28,7 @@ dataset:
   image_size: 128
   voxel_size: 64
   root_npz_file: './datasets/all_npz/'
+  root_partnet_file: './datasets/partnet/chair_hier'
 
 loss:
   temperature: 0.1

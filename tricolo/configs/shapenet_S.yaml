@@ -12,6 +12,7 @@ model:
   out_dim: 512
   use_voxel: False
   use_struct: True
+  use_struct_pretrain: True
   tri_modal: False
   num_images: 6
   image_cnn: 'resnet18'

@@ -227,7 +227,7 @@ class GNNChildEncoder(nn.Module):
 
 class RecursiveEncoder(nn.Module):
 
-    def __init__(self, config=None, variational=True, probabilistic=False):
+    def __init__(self, pretrain=True, config=None, variational=True, probabilistic=False):
         super(RecursiveEncoder, self).__init__()
         if config is None:
             config = torch.load(os.path.join(os.path.dirname(__file__), 'pc_ae_chair', 'conf.pth'))
@@ -249,12 +249,13 @@ class RecursiveEncoder(nn.Module):
             self.sample_encoder = Sampler(feature_size=config.feature_size, \
                     hidden_size=config.hidden_size, probabilistic=probabilistic)
         
-        load_checkpoint(
-            models=[self],
-            model_names=['encoder'],
-            dirname=os.path.join(os.path.dirname(__file__), 'pc_ae_chair'),
-            epoch=226,
-            strict=True)
+        if pretrain:
+            load_checkpoint(
+                models=[self],
+                model_names=['encoder'],
+                dirname=os.path.join(os.path.dirname(__file__), 'pc_ae_chair'),
+                epoch=226,
+                strict=True)
 
     def encode_node(self, node):
         all_feat, geo_feat = self.node_encoder(node.geo)

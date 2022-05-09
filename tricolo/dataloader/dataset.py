@@ -66,23 +66,23 @@ class ClrDataset(Dataset):
         
         #############################################################
         # For Debugging Purpose. We don't need voxel modality so far.
-        voxels = np.zeros((4, self.voxel_size, self.voxel_size, self.voxel_size))
-        # path = self.root_npz_file + category + '/' + model_id + '.npz'
-        # data = np.load(path)
-        # if self.voxel_size == 32:
-        #     voxel_data = data['voxel32']
-        # elif self.voxel_size == 64:
-        #     voxel_data = data['voxel64']
-        # elif self.voxel_size == 128:
-        #     voxel_data = data['voxel128']
-        # else:
-        #     raise('Not supported voxel size')
-        # coords, colors = voxel_data
-        # coords = coords.astype(int)
         # voxels = np.zeros((4, self.voxel_size, self.voxel_size, self.voxel_size))
-        # for i in range(coords.shape[0]):
-        #     voxels[:3, coords[i, 0], coords[i, 1], coords[i, 2]] = colors[i]
-        #     voxels[-1, coords[i, 0], coords[i, 1], coords[i, 2]] = 1
+        path = self.root_npz_file + category + '/' + model_id + '.npz'
+        data = np.load(path)
+        if self.voxel_size == 32:
+            voxel_data = data['voxel32']
+        elif self.voxel_size == 64:
+            voxel_data = data['voxel64']
+        elif self.voxel_size == 128:
+            voxel_data = data['voxel128']
+        else:
+            raise('Not supported voxel size')
+        coords, colors = voxel_data
+        coords = coords.astype(int)
+        voxels = np.zeros((4, self.voxel_size, self.voxel_size, self.voxel_size))
+        for i in range(coords.shape[0]):
+            voxels[:3, coords[i, 0], coords[i, 1], coords[i, 2]] = colors[i]
+            voxels[-1, coords[i, 0], coords[i, 1], coords[i, 2]] = 1
 
         #############################################################
         # StructureNet Data: Structure + Geometry

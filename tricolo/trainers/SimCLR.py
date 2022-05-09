@@ -72,7 +72,7 @@ class SimCLR(object):
 
                 xls = data_dict['tokens'].to(self.device)
 
-                voxels, images, struct = None, None, None
+                voxels, images, struct_tree = None, None, None
 
                 if self.tri_modal:
                     if self.config['sparse_model']:
@@ -179,7 +179,7 @@ class SimCLR(object):
             for data_dict in tqdm(valid_loader):
                 xls = data_dict['tokens'].to(self.device)
 
-                voxels, images = None, None
+                voxels, images, struct_tree = None, None, None
 
                 if self.tri_modal:
                     if self.config['sparse_model']:
@@ -260,7 +260,7 @@ class SimCLR(object):
             for data_dict in tqdm(loader):
                 xls = data_dict['tokens'].to(self.device)
 
-                voxels, images = None, None
+                voxels, images, struct_tree = None, None, None
 
                 if self.tri_modal:
                     if self.config['sparse_model']:
