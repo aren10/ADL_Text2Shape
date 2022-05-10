@@ -235,7 +235,7 @@ class SimCLR(object):
     def save_output(self, log_dir, eval_loader='valid'):
         with torch.no_grad():
             train_loader, valid_loader, test_loader = self.dataset.get_data_loaders()
-
+            
             model = ModelCLR(self.dset, self.config['dataset']['voxel_size'], self.config['sparse_model'], self.use_voxel_color, **self.config["model"]).to(self.device) #model is from retrieval_model which is the training model
             model = self._load_pre_trained_weights(model, log_dir)
             model.eval()
@@ -405,13 +405,14 @@ class SimCLR(object):
 
     def save_output_embed(self, log_dir, eval_loader='valid'):
         with torch.no_grad():
+            
             train_loader, valid_loader, test_loader = self.dataset.get_data_loaders()
 
             model = ModelCLR(self.dset, self.config['dataset']['voxel_size'], self.config['sparse_model'], self.use_voxel_color, **self.config["model"]).to(self.device) #model is from retrieval_model which is the training model
             model = self._load_pre_trained_weights(model, log_dir)
             model.eval()
 
-            model_test_folder = os.path.join(log_dir, eval_loader)
+            model_test_folder = log_dir
             _save_config_file(model_test_folder, self.config)
 
             print('Testing...')
@@ -424,7 +425,7 @@ class SimCLR(object):
                 print('Evaluating on test loader')
                 loader = test_loader
             elif eval_loader == 'train':
-                print('Evaluating on test loader')
+                print('Evaluating on train loader')
                 loader = train_loader
 
             embed_list = []
@@ -469,28 +470,27 @@ class SimCLR(object):
                 if self.tri_modal:
                     z_voxels = F.normalize(z_voxels, dim=1)
                     z_images = F.normalize(z_images, dim=1)
-                    data_tuple += (z_images+z_voxels).detach().cpu().numpy()
+                    shape_feature = ((z_images+z_voxels).detach().cpu().numpy())
                     # shape_embeds.append(z_images.detach().cpu().numpy())
                     # shape_embeds.append(z_voxels.detach().cpu().numpy())
                     # shape_embeds.append((z_images+z_voxels).detach().cpu().numpy())
                 elif self.use_voxel:
                     z_voxels = F.normalize(z_voxels, dim=1)
-                    data_tuple += z_voxels.detach().cpu().numpy()
+                    shape_feature = (z_voxels.detach().cpu().numpy())
                 elif self.use_struct:
                     z_struct = F.normalize(z_struct, dim=1)
-                    data_tuple += z_struct.detach().cpu().numpy()
+                    shape_feature = (z_struct.detach().cpu().numpy())
                 else:
                     z_images = F.normalize(z_images, dim=1)
-                    data_tuple += z_images.detach().cpu().numpy()
+                    shape_feature = (z_images.detach().cpu().numpy())
 
-                data_tuple += zls.detach().cpu().numpy()
-                data_tuple += data_dict['text']
-                data_tuple += data_dict['parnet_anno_id']
-                embed_list.append(data_tuple)
+                for i in range(shape_feature.shape[0]):
+                    data_tuple = (data_dict['model_id'][i], shape_feature[i], zls.detach().cpu().numpy()[i], data_dict['text'][i], data_dict['parnet_anno_id'][i])
+                    embed_list.append(data_tuple)
 
             embeddings_dict = {}
             embeddings_dict['ModelID_Fshape_Ftext_Text_PartnetID'] = embed_list
-            save_output_path = os.path.join(model_test_folder, 'output.pkl')
+            save_output_path = os.path.join(model_test_folder, eval_loader + '.pkl')
             with open(save_output_path, 'wb') as f:
                 pickle.dump(embeddings_dict, f)
                 print(f"saved output dict to {save_output_path}")
@@ -520,26 +520,16 @@ class SimCLR(object):
         return pr_at_k
 
     def inference(self, log_dir, clip=False, eval_loader='valid'):
-        model_test_folder = os.path.join(log_dir, eval_loader)
+        model_test_folder = os.path.join(log_dir, 'embed')
         if not os.path.exists(model_test_folder):
             os.makedirs(model_test_folder)
 
         if clip:
             embeddings_path = self.save_output_clip(log_dir, eval_loader)
         else:
-            if os.path.isfile(os.path.join(model_test_folder, 'output.p')):
-                embeddings_path = os.path.join(model_test_folder, 'output.p')
+            if os.path.isfile(os.path.join(model_test_folder, eval_loader + '.pkl')):
+                embeddings_path = os.path.join(model_test_folder, eval_loader + '.pkl')
             else:
-                embeddings_path = self.save_output_embed(log_dir, eval_loader)
+                embeddings_path = self.save_output_embed(model_test_folder, eval_loader)
         
         print('Model saved at:', embeddings_path)
-        
-        # metric = 'cosine'
-        # dset = self.config['dset']
-
-        # with open(embeddings_path, 'rb') as f:
-        #     embeddings_dict = pickle.load(f)
-
-        # render_dir = os.path.join(os.path.dirname(embeddings_path), 'nearest_neighbor_renderings')
-        # pr_at_k = compute_cross_modal(dset, embeddings_dict, model_test_folder, metric, concise=render_dir)
-        # return pr_at_k
