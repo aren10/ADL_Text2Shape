@@ -125,6 +125,7 @@ class ClrDataset(Dataset):
             feats = b
 
             data_dict = {'model_id': model_id,
+                        'parnet_anno_id': parnet_anno_id, 
                         'category': category,
                         'text': text,
                         'tokens': tokens,
@@ -135,7 +136,7 @@ class ClrDataset(Dataset):
         else:
             images = images.astype(np.float32)
             voxels = voxels.astype(np.float32)
-            return model_id, category, text, tokens, images, voxels, obj
+            return model_id, parnet_anno_id, category, text, tokens, images, voxels, obj
 
     def get_partnet_anno_id(self, anno_id):
         obj = self.load_object(os.path.join(self.root, anno_id+'.json'), \

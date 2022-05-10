@@ -42,14 +42,16 @@ class ClrDataLoader(object):
     
     def collate_feats(self, b):
         model_id_list = []
+        parnet_anno_id_list = []
         category_list = []
         test_list = []
         tokens_list = []
         images_list = []
         voxels_list = []
         struct_tree_list = []
-        for model_id, category, text, tokens, images, voxels, struct_tree in b:
+        for model_id, parnet_anno_id, category, text, tokens, images, voxels, struct_tree in b:
             model_id_list.append(model_id)
+            parnet_anno_id_list.append(parnet_anno_id)
             category_list.append(category)
             test_list.append(text)
             tokens_list.append(tokens)
@@ -61,6 +63,7 @@ class ClrDataLoader(object):
         voxels_array = torch.from_numpy(np.stack(voxels_list, axis=0))
 
         data_dict = {'model_id': model_id_list,
+                    'parnet_anno_id': parnet_anno_id_list,
                     'category': category_list,
                     'text': test_list,
                     'tokens': tokens_array,

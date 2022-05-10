@@ -29,6 +29,7 @@ dataset:
   voxel_size: 64
   use_voxel_color: True
   root_npz_file: './datasets/all_npz/'
+  root_partnet_file: './datasets/partnet/chair_hier'
 
 loss:
   temperature: 0.1

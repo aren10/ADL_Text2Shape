@@ -31,6 +31,7 @@ def main(load_dir):
 
     dataset = ClrDataLoader(config['dset'], config['batch_size'], config['sparse_model'], **config['dataset'])
     simclr = SimCLR(dataset, config)
+    simclr.inference(config['log_dir'], clip=args.clip, eval_loader=args.split)
 
     pr_at_k = simclr.test(config['log_dir'], clip=args.clip, eval_loader=args.split)
 
