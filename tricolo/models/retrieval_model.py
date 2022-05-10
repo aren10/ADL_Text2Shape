@@ -10,7 +10,7 @@ from tricolo.models.models import cnn_encoder, cnn_encoder32, cnn_encoder_sparse
 from tricolo.models.structurenet_models.model_pc import RecursiveEncoder
 
 class ModelCLR(nn.Module):
-    def __init__(self, dset, voxel_size, sparse_model, out_dim, use_voxel, use_struct, use_struct_pretrain, tri_modal, num_images, image_cnn, pretraining, vocab_size):
+    def __init__(self, dset, voxel_size, sparse_model, use_voxel_color, out_dim, use_voxel, use_struct, use_struct_pretrain, tri_modal, num_images, image_cnn, pretraining, vocab_size):
         super(ModelCLR, self).__init__()
 
         self.dset = dset
@@ -19,6 +19,7 @@ class ModelCLR(nn.Module):
         self.out_dim = out_dim
         self.cnn_name = image_cnn
         self.use_voxel = use_voxel
+        self.use_voxel_color = use_voxel_color
         self.use_struct = use_struct
         self.use_struct_pretrain = use_struct_pretrain
         self.tri_modal = tri_modal
@@ -53,7 +54,7 @@ class ModelCLR(nn.Module):
                 if self.sparse_model:
                     voxel_model = cnn_encoder_sparse(self.voxel_size, self.ef_dim, self.z_dim)
                 else:
-                    voxel_model = cnn_encoder(self.voxel_size, self.ef_dim, self.z_dim)
+                    voxel_model = cnn_encoder(self.use_voxel_color, self.voxel_size, self.ef_dim, self.z_dim)
                 voxel_fc = nn.Sequential(nn.Linear(self.z_dim,self.out_dim),nn.ReLU(),nn.Linear(self.out_dim,self.out_dim))
 
                 svcnn = SVCNN(self.z_dim, pretraining=self.pretraining, cnn_name=self.cnn_name)
@@ -64,7 +65,7 @@ class ModelCLR(nn.Module):
                 if self.sparse_model:
                     voxel_model = cnn_encoder_sparse(self.voxel_size, self.ef_dim, self.z_dim)
                 else:
-                    voxel_model = cnn_encoder(self.voxel_size, self.ef_dim, self.z_dim)
+                    voxel_model = cnn_encoder(self.use_voxel_color, self.voxel_size, self.ef_dim, self.z_dim)
                 voxel_fc = nn.Sequential(nn.Linear(self.z_dim,self.out_dim),nn.ReLU(),nn.Linear(self.out_dim,self.out_dim))
             elif self.use_struct:
                 print('Training Bi-Modal Model - StructureNet')

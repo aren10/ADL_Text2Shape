@@ -11,7 +11,7 @@ from .tree import Tree
 from collections import namedtuple
 
 class ClrDataset(Dataset):
-    def __init__(self, anno_path, json_file, sparse_model, image_size, voxel_size, root_npz_file='./datasets/all_npz/', root_partnet_file='./datasets/partnet/chair_hier'):
+    def __init__(self, anno_path, json_file, sparse_model, image_size, voxel_size, use_voxel_color, root_npz_file='./datasets/all_npz/', root_partnet_file='./datasets/partnet/chair_hier'):
         shapenet_clr_frame = []
         with jsonlines.open(json_file) as reader:
             for obj in reader:
@@ -49,7 +49,7 @@ class ClrDataset(Dataset):
         print('Image Resolution: {}, Voxel Resolution: {}'.format(image_size, voxel_size))
         self.image_size = image_size #见config
         self.voxel_size = voxel_size
-
+        self.use_voxel_color = use_voxel_color
         self.sparse_model = sparse_model
         print("# of training text-shape pairs is:", len(self.clr_frame))
 
@@ -79,10 +79,17 @@ class ClrDataset(Dataset):
             raise('Not supported voxel size')
         coords, colors = voxel_data
         coords = coords.astype(int)
-        voxels = np.zeros((4, self.voxel_size, self.voxel_size, self.voxel_size))
+        if self.use_voxel_color:
+            voxels = np.zeros((4, self.voxel_size, self.voxel_size, self.voxel_size))
+        else:
+            voxels = np.zeros((1, self.voxel_size, self.voxel_size, self.voxel_size))
+
         for i in range(coords.shape[0]):
-            voxels[:3, coords[i, 0], coords[i, 1], coords[i, 2]] = colors[i]
-            voxels[-1, coords[i, 0], coords[i, 1], coords[i, 2]] = 1
+            if self.use_voxel_color:
+                voxels[:3, coords[i, 0], coords[i, 1], coords[i, 2]] = colors[i]
+                voxels[-1, coords[i, 0], coords[i, 1], coords[i, 2]] = 1
+            else:
+                voxels[0, coords[i, 0], coords[i, 1], coords[i, 2]] = 1
 
         #############################################################
         # StructureNet Data: Structure + Geometry
@@ -123,7 +130,7 @@ class ClrDataset(Dataset):
                         'tokens': tokens,
                         'images': images.astype(np.float32),
                         'voxels': {'locs': locs, 'feats': feats},
-                        'struct_tree': data_feats}
+                        'struct_tree': {'locs': locs, 'feats': feats}}
             return data_dict
         else:
             images = images.astype(np.float32)

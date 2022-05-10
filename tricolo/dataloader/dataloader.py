@@ -25,7 +25,7 @@ def collate_fn(batch):
     return data
 
 class ClrDataLoader(object):
-    def __init__(self, dset, batch_size, sparse_model, num_workers, train_json_file, val_json_file, test_json_file, partnet_anno_path, image_size, voxel_size, root_npz_file='./datasets/all_npz/', root_partnet_file='./datasets/partnet/chair_hier'):
+    def __init__(self, dset, batch_size, sparse_model, num_workers, train_json_file, val_json_file, test_json_file, partnet_anno_path, image_size, voxel_size, use_voxel_color=True, root_npz_file='./datasets/all_npz/', root_partnet_file='./datasets/partnet/chair_hier'):
         self.batch_size = batch_size
         self.num_workers = num_workers
         self.train_json_file = train_json_file
@@ -34,6 +34,7 @@ class ClrDataLoader(object):
         self.partnet_anno_path = partnet_anno_path
         self.image_size = image_size
         self.voxel_size = voxel_size
+        self.use_voxel_color = use_voxel_color
         self.sparse_model = sparse_model
         self.root_npz_file = root_npz_file
         self.root_partnet_file = root_partnet_file
@@ -71,9 +72,9 @@ class ClrDataLoader(object):
     def get_data_loaders(self):
         if self.dset == 'shapenet':
             print('Using Shapenet Dataset')
-            train_dataset = ClrDataset(anno_path=self.partnet_anno_path, json_file=self.train_json_file, sparse_model=self.sparse_model, image_size=self.image_size, voxel_size=self.voxel_size, root_npz_file=self.root_npz_file, root_partnet_file=self.root_partnet_file)
-            valid_dataset = ClrDataset(anno_path=self.partnet_anno_path, json_file=self.val_json_file, sparse_model=self.sparse_model, image_size=self.image_size, voxel_size=self.voxel_size, root_npz_file=self.root_npz_file, root_partnet_file=self.root_partnet_file)
-            test_dataset = ClrDataset(anno_path=self.partnet_anno_path, json_file=self.test_json_file, sparse_model=self.sparse_model, image_size=self.image_size, voxel_size=self.voxel_size, root_npz_file=self.root_npz_file, root_partnet_file=self.root_partnet_file)
+            train_dataset = ClrDataset(anno_path=self.partnet_anno_path, json_file=self.train_json_file, sparse_model=self.sparse_model, image_size=self.image_size, voxel_size=self.voxel_size, use_voxel_color=self.use_voxel_color, root_npz_file=self.root_npz_file, root_partnet_file=self.root_partnet_file)
+            valid_dataset = ClrDataset(anno_path=self.partnet_anno_path, json_file=self.val_json_file, sparse_model=self.sparse_model, image_size=self.image_size, voxel_size=self.voxel_size, use_voxel_color=self.use_voxel_color,root_npz_file=self.root_npz_file, root_partnet_file=self.root_partnet_file)
+            test_dataset = ClrDataset(anno_path=self.partnet_anno_path, json_file=self.test_json_file, sparse_model=self.sparse_model, image_size=self.image_size, voxel_size=self.voxel_size, use_voxel_color=self.use_voxel_color,root_npz_file=self.root_npz_file, root_partnet_file=self.root_partnet_file)
         else:
             raise('Implement Other Dataset')
 

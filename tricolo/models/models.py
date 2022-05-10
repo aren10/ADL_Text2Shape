@@ -36,14 +36,17 @@ class cnn_encoder_sparse(nn.Module):
         '''
 
 class cnn_encoder(nn.Module):
-    def __init__(self, voxel_size, ef_dim, z_dim):
+    def __init__(self, use_voxel_color, voxel_size, ef_dim, z_dim):
         super(cnn_encoder, self).__init__()
 
         print('Dense Voxel Encoder')
         self.ef_dim = ef_dim
         self.z_dim = z_dim
-
-        self.conv_1 = nn.Conv3d(4, self.ef_dim, 3, stride=2, padding=1, bias=False)
+        self.use_voxel_color = use_voxel_color
+        if self.use_voxel_color:
+            self.conv_1 = nn.Conv3d(4, self.ef_dim, 3, stride=2, padding=1, bias=False)
+        else:
+            self.conv_1 = nn.Conv3d(1, self.ef_dim, 3, stride=2, padding=1, bias=False)
         self.in_1 = nn.InstanceNorm3d(self.ef_dim)
 
         self.conv_2 = nn.Conv3d(self.ef_dim, self.ef_dim*2, 3, stride=1, padding=1, bias=False)
