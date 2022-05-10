@@ -412,7 +412,7 @@ class SimCLR(object):
             model = self._load_pre_trained_weights(model, log_dir)
             model.eval()
 
-            model_test_folder = log_dir
+            model_test_folder = os.path.join(log_dir, 'embed')
             _save_config_file(model_test_folder, self.config)
 
             print('Testing...')
@@ -530,6 +530,6 @@ class SimCLR(object):
             if os.path.isfile(os.path.join(model_test_folder, eval_loader + '.pkl')):
                 embeddings_path = os.path.join(model_test_folder, eval_loader + '.pkl')
             else:
-                embeddings_path = self.save_output_embed(model_test_folder, eval_loader)
+                embeddings_path = self.save_output_embed(log_dir, eval_loader)
         
         print('Model saved at:', embeddings_path)
