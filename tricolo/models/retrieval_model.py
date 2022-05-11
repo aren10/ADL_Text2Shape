@@ -8,9 +8,11 @@ import torch.nn.functional as F
 
 from tricolo.models.models import cnn_encoder, cnn_encoder32, cnn_encoder_sparse, SVCNN, MVCNN
 from tricolo.models.structurenet_models.model_pc import RecursiveEncoder
+from tricolo.models.gnn import FlattenModel
+
 
 class ModelCLR(nn.Module):
-    def __init__(self, dset, voxel_size, sparse_model, use_voxel_color, out_dim, use_voxel, use_struct, use_struct_pretrain, tri_modal, num_images, image_cnn, pretraining, vocab_size):
+    def __init__(self, dset, voxel_size, sparse_model, use_voxel_color, out_dim, use_voxel, use_struct, use_struct_pretrain, tri_modal, num_images, image_cnn, pretraining, vocab_size, use_flatten=False):
         super(ModelCLR, self).__init__()
 
         self.dset = dset
@@ -22,6 +24,7 @@ class ModelCLR(nn.Module):
         self.use_voxel_color = use_voxel_color
         self.use_struct = use_struct
         self.use_struct_pretrain = use_struct_pretrain
+        self.use_flatten = use_flatten
         self.tri_modal = tri_modal
         self.voxel_size = voxel_size
         self.num_images = num_images
@@ -32,7 +35,7 @@ class ModelCLR(nn.Module):
         self.embedding_layer = nn.Embedding(vocab_size, 256, padding_idx=0)
         self.voxel_model, self.voxel_fc, \
             self.struct_model, self.struct_fc, \
-                self.image_model, self.image_fc = self._get_res_encoder()
+                self.image_model, self.image_fc, self.flatten_model, self.flatten_fc = self._get_res_encoder()
 
     def _get_text_encoder(self):
         print("Text feature extractor: BiGRU")
@@ -47,6 +50,8 @@ class ModelCLR(nn.Module):
         image_fc = None
         struct_model = None
         struct_fc = None
+        flatten_model = None
+        flatten_fc = None
 
         if self.dset == 'shapenet':
             if self.tri_modal:
@@ -74,6 +79,13 @@ class ModelCLR(nn.Module):
                 else:
                     struct_model = RecursiveEncoder(pretrain=self.use_struct_pretrain)
                 struct_fc = nn.Sequential(nn.Linear(struct_model.conf.feature_size, self.out_dim),nn.ReLU(),nn.Linear(self.out_dim,self.out_dim))
+            elif self.use_flatten:
+                print('Training Bi-Modal Model - Flattened GNN')
+                if self.sparse_model:
+                    raise NotImplementedError
+                else:
+                    flatten_model = FlattenModel()
+                flatten_fc = nn.Sequential(nn.Linear(128, self.out_dim),nn.ReLU(),nn.Linear(self.out_dim,self.out_dim))
             else:
                 print('Training Bi-Modal Model')
                 svcnn = SVCNN(self.z_dim, pretraining=self.pretraining, cnn_name=self.cnn_name)
@@ -81,7 +93,7 @@ class ModelCLR(nn.Module):
                 image_fc = nn.Sequential(nn.Linear(self.z_dim,self.out_dim),nn.ReLU(),nn.Linear(self.out_dim,self.out_dim))
         else:
             raise('Implement Other Dataset')
-        return voxel_model, voxel_fc, struct_model, struct_fc, image_model, image_fc
+        return voxel_model, voxel_fc, struct_model, struct_fc, image_model, image_fc, flatten_model, flatten_fc
 
     def voxel_encoder(self, xis):
         h = self.voxel_model(xis)
@@ -97,6 +109,11 @@ class ModelCLR(nn.Module):
 
         h_batch = torch.cat(h_list, dim=0)
         x = self.struct_fc(h_batch)
+        return x
+
+    def flatten_encoder(self, xis):
+        h, _ = self.flatten_model(xis)
+        x = self.flatten_fc(h, get_graph_embeddings=True, get_node_embeddings=False)
         return x
 
     def image_encoder(self, xis):
@@ -117,10 +134,11 @@ class ModelCLR(nn.Module):
         out_emb = torch.tanh(self.text_fc(torch.cat((hidden[-2,:,:], hidden[-1,:,:]), dim = 1)))
         return out_emb
 
-    def forward(self, voxels, struct_tree, images, encoded_inputs):
+    def forward(self, voxels, struct_tree, graph, images, encoded_inputs):
         z_voxels = None
         z_images = None
         z_struct = None
+        z_flatten = None
         if self.tri_modal:
             images = images.reshape(-1, images.shape[2], images.shape[3], images.shape[4])
             z_voxels = self.voxel_encoder(voxels)
@@ -129,9 +147,11 @@ class ModelCLR(nn.Module):
             z_voxels = self.voxel_encoder(voxels)
         elif self.use_struct:
             z_struct = self.struct_encoder(struct_tree)
+        elif self.use_flatten:
+            z_flatten = self.flatten_encoder(graph)
         else:
             images = images.reshape(-1, images.shape[2], images.shape[3], images.shape[4])
             z_images = self.image_encoder(images)
 
         zls = self.text_encoder(encoded_inputs)
-        return z_voxels, z_struct, z_images, zls
+        return z_voxels, z_struct, z_flatten, z_images, zls

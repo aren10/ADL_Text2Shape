@@ -46,6 +46,7 @@ class SimCLR(object):
         
         self.use_voxel = config['model']['use_voxel']
         self.use_struct = config['model']['use_struct']
+        self.use_flatten = config['model']['use_flatten']
         self.use_voxel_color = config['dataset']['use_voxel_color']
         self.tri_modal = config['model']['tri_modal']
         self.num_images = config['model']['num_images']
@@ -74,6 +75,7 @@ class SimCLR(object):
                 xls = data_dict['tokens'].to(self.device)
 
                 voxels, images, struct_tree = None, None, None
+                graph = None
 
                 if self.tri_modal:
                     if self.config['sparse_model']:
@@ -100,11 +102,16 @@ class SimCLR(object):
                         struct_tree_ = data_dict['struct_tree']
                         for obj in struct_tree_:
                             struct_tree.append(obj.to(self.device))
+                elif self.use_flatten:
+                    graph = {}
+                    graph['points'] = data_dict['points'].to(self.device)
+                    graph['edges'] = data_dict['edges']
+                    graph['N'] = data_dict['graph_size']
                 else:
                     images = data_dict['images'][:, ::self.multiplier].to(self.device)
 
                 optimizer.zero_grad()
-                z_voxels, z_struct, z_images, zls = model(voxels, struct_tree, images, xls)
+                z_voxels, z_struct, z_flatten, z_images, zls = model(voxels, struct_tree, graph, images, xls)
                 zls = F.normalize(zls, dim=1)
                 if self.tri_modal:
                     z_voxels = F.normalize(z_voxels, dim=1)
@@ -116,6 +123,9 @@ class SimCLR(object):
                 elif self.use_struct:
                     z_struct = F.normalize(z_struct, dim=1)
                     loss = self.nt_xent_criterion(z_struct, zls)
+                elif self.use_flatten:
+                    z_flatten = F.normalize(z_flatten, dim=1)
+                    loss = self.nt_xent_criterion(z_flatten, zls)
                 else:
                     z_images = F.normalize(z_images, dim=1)
                     loss = self.nt_xent_criterion(z_images, zls)
@@ -181,6 +191,7 @@ class SimCLR(object):
                 xls = data_dict['tokens'].to(self.device)
 
                 voxels, images, struct_tree = None, None, None
+                graph = None
 
                 if self.tri_modal:
                     if self.config['sparse_model']:
@@ -207,10 +218,16 @@ class SimCLR(object):
                         struct_tree_ = data_dict['struct_tree']
                         for obj in struct_tree_:
                             struct_tree.append(obj.to(self.device))
+                elif self.use_flatten:
+                    graph = {}
+                    graph['points'] = data_dict['points'].to(self.device)
+                    graph['edges'] = data_dict['edges']
+                    graph['N'] = data_dict['graph_size']
                 else:
                     images = data_dict['images'][:, ::self.multiplier].to(self.device)
 
-                z_voxels, z_struct, z_images, zls = model(voxels, struct_tree, images, xls)
+                #z_voxels, z_struct, z_images, zls = model(voxels, struct_tree, images, xls)
+                z_voxels, z_struct, z_flatten, z_images, zls = model(voxels, struct_tree, graph, images, xls)
                 zls = F.normalize(zls, dim=1)
                 if self.tri_modal:
                     z_voxels = F.normalize(z_voxels, dim=1)
@@ -222,6 +239,9 @@ class SimCLR(object):
                 elif self.use_struct:
                     z_struct = F.normalize(z_struct, dim=1)
                     loss = self.nt_xent_criterion(z_struct, zls)
+                elif self.use_flatten:
+                    z_flatten = F.normalize(z_flatten, dim=1)
+                    loss = self.nt_xent_criterion(z_flatten, zls)
                 else:
                     z_images = F.normalize(z_images, dim=1)
                     loss = self.nt_xent_criterion(z_images, zls)
