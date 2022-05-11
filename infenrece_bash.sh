@@ -1,0 +1,1 @@
+python run_retrieval_val.py --exp shapenet_F

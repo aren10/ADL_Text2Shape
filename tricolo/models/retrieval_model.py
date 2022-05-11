@@ -112,7 +112,9 @@ class ModelCLR(nn.Module):
         return x
 
     def flatten_encoder(self, xis):
-        h, _ = self.flatten_model(xis, get_graph_embeddings=True, get_node_embeddings=False)
+        h, _ = self.flatten_model(xis, get_graph_embeddings=True, get_node_embeddings=True)
+        for e in _:
+            print(e.shape)
         x = self.flatten_fc(h)
         return x
 
