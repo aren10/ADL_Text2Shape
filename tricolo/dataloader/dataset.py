@@ -3,6 +3,7 @@ import json
 import jsonlines
 import cv2 as cv
 import numpy as np
+import pickle
 
 import torch
 from torch.utils.data import Dataset
@@ -93,7 +94,10 @@ class ClrDataset(Dataset):
 
         #############################################################
         # StructureNet Data: Structure + Geometry
-        obj = self.load_object(os.path.join(self.root_partnet_file, parnet_anno_id+'.json'), load_geo=True)  
+        #obj = self.load_object(os.path.join(self.root_partnet_file, parnet_anno_id+'.json'), load_geo=True)  
+        obj = None
+        #graph = self.load_graph
+        graph = self.load_graph(os.path.join(self.root_partnet_file, parnet_anno_id+'.json'))
         #############################################################
         # For Debugging Purpose. We don't need image modality so far.
         images = np.zeros((12, 3, self.image_size, self.image_size))
@@ -136,12 +140,35 @@ class ClrDataset(Dataset):
         else:
             images = images.astype(np.float32)
             voxels = voxels.astype(np.float32)
-            return model_id, parnet_anno_id, category, text, tokens, images, voxels, obj
+            return model_id, parnet_anno_id, category, text, tokens, images, voxels, obj, graph
 
     def get_partnet_anno_id(self, anno_id):
         obj = self.load_object(os.path.join(self.root, anno_id+'.json'), \
                 load_geo=self.load_geo)
         return obj
+
+    @staticmethod
+    def load_graph(fn):
+        geo_fn = fn.replace('_hier', '_geo').replace('json', 'npz')
+        geo_data = np.load(geo_fn)
+        all_points = torch.from_numpy(geo_data['parts'])
+        flatten_fn = fn.replace('_hier', '_flatten').replace('json', 'pkl')
+        with open(flatten_fn, 'rb') as f:
+            nodes, edges = pickle.load(f)
+        points = []
+        for node in nodes:
+            points.append(all_points[node['id']])
+        points = torch.stack(points)
+        assert points.shape[0] == len(nodes)
+        N = points.shape[0]
+
+        edges = torch.LongTensor(edges)
+        data = {
+            'points': points,
+            'edges': edges,
+            'N': N
+        }
+        return data
 
     @staticmethod
     def load_object(fn, load_geo=False):
