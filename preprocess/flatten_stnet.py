@@ -9,6 +9,7 @@ category = "chair"
 save_dir = f"../datasets/partnet/{category}_flatten"
 data_dir = f"../datasets/partnet/{category}_hier"
 part_data_dir = "/data_hdd/data_v0"
+
 from tqdm import tqdm
 
 class Part():
@@ -210,7 +211,7 @@ if __name__ == "__main__":
         files.append(filename)
     all_cats = set()
 
-    save_data = True
+    save_data = False
 
 
     count = 0
@@ -367,4 +368,7 @@ if __name__ == "__main__":
                     pickle.dump((nodes, graph_edges), f, pickle.HIGHEST_PROTOCOL)
 
         all_cats = sorted(list(all_cats))
+        with open(f"{save_dir}/categories.txt", 'w') as f:
+            for cat in all_cats:
+                f.write(cat + '\n')
         print(all_cats)

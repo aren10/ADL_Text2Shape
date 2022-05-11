@@ -52,6 +52,9 @@ class ClrDataLoader(object):
         point_list = []
         edge_list = []
         graph_size_list = []
+        labels_list = []
+        labels_num_list = []
+        labels_one_hot_list = []
         for model_id, parnet_anno_id, category, text, tokens, images, voxels, struct_tree, graph in b:
             model_id_list.append(model_id)
             parnet_anno_id_list.append(parnet_anno_id)
@@ -64,11 +67,15 @@ class ClrDataLoader(object):
             point_list.append(graph['points'])
             edge_list.append(graph['edges'])
             graph_size_list.append(graph['N'])
+            labels_list.append(graph['labels'])
+            labels_num_list.append(graph['labels_num'])
+            labels_one_hot_list.append(graph['labels_one_hot'])
 
         tokens_array = torch.from_numpy(np.stack(tokens_list, axis=0))
         images_array = torch.from_numpy(np.stack(images_list, axis=0))
         voxels_array = torch.from_numpy(np.stack(voxels_list, axis=0))
         points = torch.cat(point_list, dim=0)
+        labels_one_hot = torch.cat(labels_one_hot_list, dim=0)
         graph_size = torch.LongTensor(graph_size_list)
         cum_graph_size = [graph_size[:i].sum() for i in range(len(graph_size_list)+1)]
         edges = torch.cat([edge_list[i] + cum_graph_size[i] for i in range(len(graph_size_list))], dim=0)
@@ -83,7 +90,11 @@ class ClrDataLoader(object):
                     'struct_tree': struct_tree_list,
                     'points': points,
                     'graph_size': graph_size,
-                    'edges': edges}
+                    'edges': edges,
+                    'labels': labels_list,
+                    'labels_num': labels_num_list,
+                    'labels_one_hot': labels_one_hot
+        }
         return data_dict
 
     def get_data_loaders(self):

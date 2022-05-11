@@ -237,7 +237,7 @@ class Initializer(nn.Module):
 
 class GraphNet(nn.Module):
 
-    def __init__(self, node_size=64, edge_size=1, hidden_size=128, graph_emb_size=128, feature_size=64, T=10, masked_aggre=False, dual_passing=True):
+    def __init__(self, node_size=64, edge_size=1, hidden_size=128, graph_emb_size=128, feature_size=114, T=10, masked_aggre=False, dual_passing=True):
         super(GraphNet, self).__init__()
         self.node_size = node_size
         self.edge_size = edge_size
@@ -312,7 +312,7 @@ class GraphNet(nn.Module):
         return self.graph_emb_mlp(all_vectors)
 
 class FlattenModel(nn.Module):
-    def __init__(self, node_size=64, edge_size=1, hidden_size=128, graph_emb_size=128, feature_size=128, T=4):
+    def __init__(self, node_size=64, edge_size=1, hidden_size=128, graph_emb_size=128, feature_size=178, T=4):
         super(FlattenModel, self).__init__()
 
         self.node_size = node_size
@@ -336,6 +336,7 @@ class FlattenModel(nn.Module):
 
     def forward(self, inputs, get_graph_embeddings=False, get_node_embeddings=False):
         features = self.pointnet(inputs['points'])
+        features = torch.cat([features, inputs['one_hot']], dim=1)
         edges = inputs['edges']
         graph_sizes = inputs['N']
         edge_label = torch.zeros(edges.shape[0]).to(edges.device)
