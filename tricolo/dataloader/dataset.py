@@ -149,6 +149,8 @@ class ClrDataset(Dataset):
 
     @staticmethod
     def load_graph(fn):
+        chair_part_cats = ['arm_connector', 'arm_holistic_frame', 'arm_horizontal_bar', 'arm_near_vertical_bar', 'arm_sofa_style', 'arm_writing_table', 'back_connector', 'back_frame', 'back_frame_horizontal_bar', 'back_frame_vertical_bar', 'back_holistic_frame', 'back_single_surface', 'back_support', 'back_surface', 'back_surface_horizontal_bar', 'back_surface_vertical_bar', 'bar_stretcher', 'caster', 'caster_stem', 'central_support', 'chair_arm', 'chair_back', 'chair_base', 'chair_head', 'chair_seat', 'foot', 'foot_base', 'footrest', 'head_connector', 'headrest', 'knob', 'leg', 'lever', 'mechanical_control', 'other', 'pedestal', 'pedestal_base', 'regular_leg_base', 'rocker', 'runner', 'seat_frame', 'seat_frame_bar', 'seat_holistic_frame', 'seat_single_surface', 'seat_support', 'seat_surface', 'seat_surface_bar', 'star_leg_base', 'star_leg_set', 'wheel']
+
         geo_fn = fn.replace('_hier', '_geo').replace('json', 'npz')
         geo_data = np.load(geo_fn)
         all_points = torch.from_numpy(geo_data['parts'])
@@ -156,9 +158,20 @@ class ClrDataset(Dataset):
         with open(flatten_fn, 'rb') as f:
             nodes, edges = pickle.load(f)
         points = []
+        labels = []
+        labels_one_hot = []
+        labels_num = []
         for node in nodes:
             points.append(all_points[node['id']])
+            label = node['label']
+            labels.append(label)
+            label_num = chair_part_cats.index(label)
+            labels_num.append(label_num)
+            label_one_hot = torch.zeros(len(chair_part_cats))
+            label_one_hot[label_num] = 1
+            labels_one_hot.append(label_one_hot)
         points = torch.stack(points)
+        labels_one_hot = torch.stack(labels_one_hot)
         assert points.shape[0] == len(nodes)
         N = points.shape[0]
 
@@ -166,7 +179,10 @@ class ClrDataset(Dataset):
         data = {
             'points': points,
             'edges': edges,
-            'N': N
+            'N': N,
+            'labels': labels,
+            'labels_num': labels_num,
+            'labels_one_hot': labels_one_hot
         }
         return data
 

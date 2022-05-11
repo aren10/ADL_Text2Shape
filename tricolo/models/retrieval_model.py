@@ -30,12 +30,13 @@ class ModelCLR(nn.Module):
         self.num_images = num_images
         self.pretraining = pretraining
         self.sparse_model = sparse_model
-        
+        self.chair_part_cats = ['arm_connector', 'arm_holistic_frame', 'arm_horizontal_bar', 'arm_near_vertical_bar', 'arm_sofa_style', 'arm_writing_table', 'back_connector', 'back_frame', 'back_frame_horizontal_bar', 'back_frame_vertical_bar', 'back_holistic_frame', 'back_single_surface', 'back_support', 'back_surface', 'back_surface_horizontal_bar', 'back_surface_vertical_bar', 'bar_stretcher', 'caster', 'caster_stem', 'central_support', 'chair_arm', 'chair_back', 'chair_base', 'chair_head', 'chair_seat', 'foot', 'foot_base', 'footrest', 'head_connector', 'headrest', 'knob', 'leg', 'lever', 'mechanical_control', 'other', 'pedestal', 'pedestal_base', 'regular_leg_base', 'rocker', 'runner', 'seat_frame', 'seat_frame_bar', 'seat_holistic_frame', 'seat_single_surface', 'seat_support', 'seat_surface', 'seat_surface_bar', 'star_leg_base', 'star_leg_set', 'wheel']
         self.text_model, self.text_fc = self._get_text_encoder()
         self.embedding_layer = nn.Embedding(vocab_size, 256, padding_idx=0)
         self.voxel_model, self.voxel_fc, \
             self.struct_model, self.struct_fc, \
                 self.image_model, self.image_fc, self.flatten_model, self.flatten_fc = self._get_res_encoder()
+        self.flatten_model.cats = self.chair_part_cats
 
     def _get_text_encoder(self):
         print("Text feature extractor: BiGRU")
