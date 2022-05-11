@@ -43,7 +43,7 @@ class ClrDataset(Dataset):
             if obj['model'] in part2shape_dict and part2shape_dict[obj['model']] in valid_partnet_anno_ids:
                 obj['parnet_anno_id'] = part2shape_dict[obj['model']]
                 self.clr_frame.append(obj)
-        
+        self.clr_frame = self.clr_frame
         self.root_npz_file = root_npz_file
         self.root_partnet_file = root_partnet_file
       

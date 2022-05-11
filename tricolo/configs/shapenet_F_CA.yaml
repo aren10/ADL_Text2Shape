@@ -19,6 +19,7 @@ model:
   pretraining: True
   vocab_size: 3588
   use_flatten: True
+  use_cross_attention: True
 
 dataset:
   num_workers: 0

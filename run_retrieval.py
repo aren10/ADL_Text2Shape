@@ -16,7 +16,6 @@ def main():
     config = yaml.load(open(args.config_file, "r"), Loader=yaml.FullLoader)
 
     dataset = ClrDataLoader(config['dset'], config['batch_size'], config['sparse_model'], **config['dataset'])
-
     simclr = SimCLR(dataset, config)
     simclr.train()
 
