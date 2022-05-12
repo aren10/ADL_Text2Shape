@@ -466,7 +466,7 @@ class SimCLR(object):
 
                 xls = data_dict['tokens'].to(self.device)
 
-                voxels, images, struct_tree = None, None, None
+                voxels, images, struct_tree, z_flatten = None, None, None, None
                 data_tuple = (data_dict['model_id'], )
 
                 if self.tri_modal:
@@ -505,7 +505,7 @@ class SimCLR(object):
                 else:
                     images = data_dict['images'][:, ::self.multiplier].to(self.device)
 
-                z_voxels, z_struct, z_images, zls = model(voxels, struct_tree, images, xls)
+                z_voxels, z_struct, z_flatten, z_images, zls = model(voxels, struct_tree, graph, images, xls)
                 zls = F.normalize(zls, dim=1)
                 
                 if self.tri_modal:
@@ -521,6 +521,9 @@ class SimCLR(object):
                 elif self.use_struct:
                     z_struct = F.normalize(z_struct, dim=1)
                     shape_feature = (z_struct.detach().cpu().numpy())
+                elif self.use_flatten:
+                    z_flatten = F.normalize(z_flatten, dim=1)
+                    shape_feature = (z_flatten.detach().cpu().numpy())
                 else:
                     z_images = F.normalize(z_images, dim=1)
                     shape_feature = (z_images.detach().cpu().numpy())
