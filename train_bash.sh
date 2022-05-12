@@ -1,1 +1,1 @@
-python run_retrieval.py --config_file tricolo/configs/shapenet_V_wocolor.yaml
+python run_retrieval.py --config_file tricolo/configs/shapenet_F_CA.yaml

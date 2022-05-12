@@ -107,6 +107,8 @@ class SimCLR(object):
                     graph['points'] = data_dict['points'].to(self.device)
                     graph['edges'] = data_dict['edges']
                     graph['N'] = data_dict['graph_size']
+                    graph['labels'] = data_dict['labels']
+                    graph['labels_num'] = data_dict['labels_num']
                     graph['one_hot'] = data_dict['labels_one_hot'].to(self.device)
                     voxels = data_dict['voxels'].to(self.device)
                 else:
@@ -143,7 +145,6 @@ class SimCLR(object):
                     self.writer.add_scalar('train_loss', loss, global_step=n_iter)
 
                 n_iter += 1
-                
             if epoch_counter % self.config['eval_every_n_epochs'] == 0:
                 torch.save(model.state_dict(), os.path.join(model_checkpoints_folder, 'model_{}.pth'.format(epoch_counter)))
 
@@ -225,6 +226,8 @@ class SimCLR(object):
                     graph['points'] = data_dict['points'].to(self.device)
                     graph['edges'] = data_dict['edges']
                     graph['N'] = data_dict['graph_size']
+                    graph['labels'] = data_dict['labels']
+                    graph['labels_num'] = data_dict['labels_num']
                     graph['one_hot'] = data_dict['labels_one_hot'].to(self.device)
                     voxels = data_dict['voxels'].to(self.device)
                 else:
@@ -312,6 +315,14 @@ class SimCLR(object):
                         struct_tree_ = data_dict['struct_tree']
                         for obj in struct_tree_:
                             struct_tree.append(obj.to(self.device))
+                elif self.use_flatten:
+                    graph = {}
+                    graph['points'] = data_dict['points'].to(self.device)
+                    graph['edges'] = data_dict['edges']
+                    graph['N'] = data_dict['graph_size']
+                    graph['labels'] = data_dict['labels']
+                    graph['labels_num'] = data_dict['labels_num']
+                    graph['one_hot'] = data_dict['labels_one_hot'].to(self.device)
                 else:
                     images = data_dict['images'][:, ::self.multiplier].to(self.device)
 
@@ -457,7 +468,7 @@ class SimCLR(object):
 
                 xls = data_dict['tokens'].to(self.device)
 
-                voxels, images, struct_tree = None, None, None
+                voxels, images, struct_tree, z_flatten = None, None, None, None
                 data_tuple = (data_dict['model_id'], )
 
                 if self.tri_modal:
@@ -485,10 +496,18 @@ class SimCLR(object):
                         struct_tree_ = data_dict['struct_tree']
                         for obj in struct_tree_:
                             struct_tree.append(obj.to(self.device))
+                elif self.use_flatten:
+                    graph = {}
+                    graph['points'] = data_dict['points'].to(self.device)
+                    graph['edges'] = data_dict['edges']
+                    graph['N'] = data_dict['graph_size']
+                    graph['labels'] = data_dict['labels']
+                    graph['labels_num'] = data_dict['labels_num']
+                    graph['one_hot'] = data_dict['labels_one_hot'].to(self.device)
                 else:
                     images = data_dict['images'][:, ::self.multiplier].to(self.device)
 
-                z_voxels, z_struct, z_images, zls = model(voxels, struct_tree, images, xls)
+                z_voxels, z_struct, z_flatten, z_images, zls = model(voxels, struct_tree, graph, images, xls)
                 zls = F.normalize(zls, dim=1)
                 
                 if self.tri_modal:
@@ -504,6 +523,9 @@ class SimCLR(object):
                 elif self.use_struct:
                     z_struct = F.normalize(z_struct, dim=1)
                     shape_feature = (z_struct.detach().cpu().numpy())
+                elif self.use_flatten:
+                    z_flatten = F.normalize(z_flatten, dim=1)
+                    shape_feature = (z_flatten.detach().cpu().numpy())
                 else:
                     z_images = F.normalize(z_images, dim=1)
                     shape_feature = (z_images.detach().cpu().numpy())
