@@ -28,7 +28,7 @@ dataset:
   partnet_anno_path: 'datasets'
   image_size: 128
   voxel_size: 64
-  use_voxel_color: False
+  use_voxel_color: True
   root_npz_file: './datasets/all_npz/'
   root_partnet_file: './datasets/partnet/chair_hier'
 

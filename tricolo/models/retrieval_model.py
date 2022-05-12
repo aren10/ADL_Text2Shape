@@ -86,7 +86,8 @@ class ModelCLR(nn.Module):
                     raise NotImplementedError
                 else:
                     flatten_model = FlattenModel()
-                flatten_fc = nn.Sequential(nn.Linear(128, self.out_dim),nn.ReLU(),nn.Linear(self.out_dim,self.out_dim))
+                    voxel_model = cnn_encoder(self.use_voxel_color, self.voxel_size, self.ef_dim, self.z_dim)
+                flatten_fc = nn.Sequential(nn.Linear(128+self.z_dim, self.out_dim),nn.ReLU(),nn.Linear(self.out_dim,self.out_dim))
             else:
                 print('Training Bi-Modal Model')
                 svcnn = SVCNN(self.z_dim, pretraining=self.pretraining, cnn_name=self.cnn_name)
@@ -112,9 +113,11 @@ class ModelCLR(nn.Module):
         x = self.struct_fc(h_batch)
         return x
 
-    def flatten_encoder(self, xis):
+    def flatten_encoder(self, xis, voxels):
         h, _ = self.flatten_model(xis, get_graph_embeddings=True, get_node_embeddings=False)
-        x = self.flatten_fc(h)
+        h1 = self.voxel_model(voxels)
+        h1.squeeze()
+        x = self.flatten_fc(torch.cat([h, h1], dim=1))
         return x
 
     def image_encoder(self, xis):
@@ -149,7 +152,7 @@ class ModelCLR(nn.Module):
         elif self.use_struct:
             z_struct = self.struct_encoder(struct_tree)
         elif self.use_flatten:
-            z_flatten = self.flatten_encoder(graph)
+            z_flatten = self.flatten_encoder(graph, voxels)
         else:
             images = images.reshape(-1, images.shape[2], images.shape[3], images.shape[4])
             z_images = self.image_encoder(images)

@@ -108,6 +108,7 @@ class SimCLR(object):
                     graph['edges'] = data_dict['edges']
                     graph['N'] = data_dict['graph_size']
                     graph['one_hot'] = data_dict['labels_one_hot'].to(self.device)
+                    voxels = data_dict['voxels'].to(self.device)
                 else:
                     images = data_dict['images'][:, ::self.multiplier].to(self.device)
 
@@ -225,6 +226,7 @@ class SimCLR(object):
                     graph['edges'] = data_dict['edges']
                     graph['N'] = data_dict['graph_size']
                     graph['one_hot'] = data_dict['labels_one_hot'].to(self.device)
+                    voxels = data_dict['voxels'].to(self.device)
                 else:
                     images = data_dict['images'][:, ::self.multiplier].to(self.device)
 
