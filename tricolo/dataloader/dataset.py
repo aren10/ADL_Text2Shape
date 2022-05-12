@@ -3,6 +3,7 @@ import json
 import jsonlines
 import cv2 as cv
 import numpy as np
+import pickle
 
 import torch
 from torch.utils.data import Dataset
@@ -11,7 +12,7 @@ from .tree import Tree
 from collections import namedtuple
 
 class ClrDataset(Dataset):
-    def __init__(self, anno_path, json_file, sparse_model, image_size, voxel_size, root_npz_file='./datasets/all_npz/', root_partnet_file='./datasets/partnet/chair_hier'):
+    def __init__(self, anno_path, json_file, sparse_model, image_size, voxel_size, use_voxel_color, root_npz_file='./datasets/all_npz/', root_partnet_file='./datasets/partnet/chair_hier'):
         shapenet_clr_frame = []
         with jsonlines.open(json_file) as reader:
             for obj in reader:
@@ -42,14 +43,14 @@ class ClrDataset(Dataset):
             if obj['model'] in part2shape_dict and part2shape_dict[obj['model']] in valid_partnet_anno_ids:
                 obj['parnet_anno_id'] = part2shape_dict[obj['model']]
                 self.clr_frame.append(obj)
-        
+        self.clr_frame = self.clr_frame
         self.root_npz_file = root_npz_file
         self.root_partnet_file = root_partnet_file
       
         print('Image Resolution: {}, Voxel Resolution: {}'.format(image_size, voxel_size))
         self.image_size = image_size #见config
         self.voxel_size = voxel_size
-
+        self.use_voxel_color = use_voxel_color
         self.sparse_model = sparse_model
         print("# of training text-shape pairs is:", len(self.clr_frame))
 
@@ -79,14 +80,24 @@ class ClrDataset(Dataset):
             raise('Not supported voxel size')
         coords, colors = voxel_data
         coords = coords.astype(int)
-        voxels = np.zeros((4, self.voxel_size, self.voxel_size, self.voxel_size))
+        if self.use_voxel_color:
+            voxels = np.zeros((4, self.voxel_size, self.voxel_size, self.voxel_size))
+        else:
+            voxels = np.zeros((1, self.voxel_size, self.voxel_size, self.voxel_size))
+
         for i in range(coords.shape[0]):
-            voxels[:3, coords[i, 0], coords[i, 1], coords[i, 2]] = colors[i]
-            voxels[-1, coords[i, 0], coords[i, 1], coords[i, 2]] = 1
+            if self.use_voxel_color:
+                voxels[:3, coords[i, 0], coords[i, 1], coords[i, 2]] = colors[i]
+                voxels[-1, coords[i, 0], coords[i, 1], coords[i, 2]] = 1
+            else:
+                voxels[0, coords[i, 0], coords[i, 1], coords[i, 2]] = 1
 
         #############################################################
         # StructureNet Data: Structure + Geometry
-        obj = self.load_object(os.path.join(self.root_partnet_file, parnet_anno_id+'.json'), load_geo=True)  
+        #obj = self.load_object(os.path.join(self.root_partnet_file, parnet_anno_id+'.json'), load_geo=True)  
+        obj = None
+        #graph = self.load_graph
+        graph = self.load_graph(os.path.join(self.root_partnet_file, parnet_anno_id+'.json'))
         #############################################################
         # For Debugging Purpose. We don't need image modality so far.
         images = np.zeros((12, 3, self.image_size, self.image_size))
@@ -118,22 +129,62 @@ class ClrDataset(Dataset):
             feats = b
 
             data_dict = {'model_id': model_id,
+                        'parnet_anno_id': parnet_anno_id, 
                         'category': category,
                         'text': text,
                         'tokens': tokens,
                         'images': images.astype(np.float32),
                         'voxels': {'locs': locs, 'feats': feats},
-                        'struct_tree': data_feats}
+                        'struct_tree': {'locs': locs, 'feats': feats}}
             return data_dict
         else:
             images = images.astype(np.float32)
             voxels = voxels.astype(np.float32)
-            return model_id, category, text, tokens, images, voxels, obj
+            return model_id, parnet_anno_id, category, text, tokens, images, voxels, obj, graph
 
     def get_partnet_anno_id(self, anno_id):
         obj = self.load_object(os.path.join(self.root, anno_id+'.json'), \
                 load_geo=self.load_geo)
         return obj
+
+    @staticmethod
+    def load_graph(fn):
+        chair_part_cats = ['arm_connector', 'arm_holistic_frame', 'arm_horizontal_bar', 'arm_near_vertical_bar', 'arm_sofa_style', 'arm_writing_table', 'back_connector', 'back_frame', 'back_frame_horizontal_bar', 'back_frame_vertical_bar', 'back_holistic_frame', 'back_single_surface', 'back_support', 'back_surface', 'back_surface_horizontal_bar', 'back_surface_vertical_bar', 'bar_stretcher', 'caster', 'caster_stem', 'central_support', 'chair_arm', 'chair_back', 'chair_base', 'chair_head', 'chair_seat', 'foot', 'foot_base', 'footrest', 'head_connector', 'headrest', 'knob', 'leg', 'lever', 'mechanical_control', 'other', 'pedestal', 'pedestal_base', 'regular_leg_base', 'rocker', 'runner', 'seat_frame', 'seat_frame_bar', 'seat_holistic_frame', 'seat_single_surface', 'seat_support', 'seat_surface', 'seat_surface_bar', 'star_leg_base', 'star_leg_set', 'wheel']
+
+        geo_fn = fn.replace('_hier', '_geo').replace('json', 'npz')
+        geo_data = np.load(geo_fn)
+        all_points = torch.from_numpy(geo_data['parts'])
+        flatten_fn = fn.replace('_hier', '_flatten').replace('json', 'pkl')
+        with open(flatten_fn, 'rb') as f:
+            nodes, edges = pickle.load(f)
+        points = []
+        labels = []
+        labels_one_hot = []
+        labels_num = []
+        for node in nodes:
+            points.append(all_points[node['id']])
+            label = node['label']
+            labels.append(label)
+            label_num = chair_part_cats.index(label)
+            labels_num.append(label_num)
+            label_one_hot = torch.zeros(len(chair_part_cats))
+            label_one_hot[label_num] = 1
+            labels_one_hot.append(label_one_hot)
+        points = torch.stack(points)
+        labels_one_hot = torch.stack(labels_one_hot)
+        assert points.shape[0] == len(nodes)
+        N = points.shape[0]
+
+        edges = torch.LongTensor(edges)
+        data = {
+            'points': points,
+            'edges': edges,
+            'N': N,
+            'labels': labels,
+            'labels_num': labels_num,
+            'labels_one_hot': labels_one_hot
+        }
+        return data
 
     @staticmethod
     def load_object(fn, load_geo=False):

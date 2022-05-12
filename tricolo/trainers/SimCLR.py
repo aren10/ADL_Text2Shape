@@ -46,6 +46,8 @@ class SimCLR(object):
         
         self.use_voxel = config['model']['use_voxel']
         self.use_struct = config['model']['use_struct']
+        self.use_flatten = config['model']['use_flatten']
+        self.use_voxel_color = config['dataset']['use_voxel_color']
         self.tri_modal = config['model']['tri_modal']
         self.num_images = config['model']['num_images']
         self.multiplier = 12 // self.num_images
@@ -53,7 +55,7 @@ class SimCLR(object):
     def train(self):
         train_loader, valid_loader, _ = self.dataset.get_data_loaders()
 
-        model = ModelCLR(self.dset, self.config['dataset']['voxel_size'], self.config['sparse_model'], **self.config["model"]).to(self.device)
+        model = ModelCLR(self.dset, self.config['dataset']['voxel_size'], self.config['sparse_model'], self.use_voxel_color, **self.config["model"]).to(self.device)
 
         optimizer = torch.optim.Adam(model.parameters(), eval(self.config['learning_rate']), weight_decay=eval(self.config['weight_decay']))
 
@@ -73,6 +75,7 @@ class SimCLR(object):
                 xls = data_dict['tokens'].to(self.device)
 
                 voxels, images, struct_tree = None, None, None
+                graph = None
 
                 if self.tri_modal:
                     if self.config['sparse_model']:
@@ -99,11 +102,20 @@ class SimCLR(object):
                         struct_tree_ = data_dict['struct_tree']
                         for obj in struct_tree_:
                             struct_tree.append(obj.to(self.device))
+                elif self.use_flatten:
+                    graph = {}
+                    graph['points'] = data_dict['points'].to(self.device)
+                    graph['edges'] = data_dict['edges']
+                    graph['N'] = data_dict['graph_size']
+                    graph['labels'] = data_dict['labels']
+                    graph['labels_num'] = data_dict['labels_num']
+                    graph['one_hot'] = data_dict['labels_one_hot'].to(self.device)
+                    voxels = data_dict['voxels'].to(self.device)
                 else:
                     images = data_dict['images'][:, ::self.multiplier].to(self.device)
 
                 optimizer.zero_grad()
-                z_voxels, z_struct, z_images, zls = model(voxels, struct_tree, images, xls)
+                z_voxels, z_struct, z_flatten, z_images, zls = model(voxels, struct_tree, graph, images, xls)
                 zls = F.normalize(zls, dim=1)
                 if self.tri_modal:
                     z_voxels = F.normalize(z_voxels, dim=1)
@@ -115,6 +127,9 @@ class SimCLR(object):
                 elif self.use_struct:
                     z_struct = F.normalize(z_struct, dim=1)
                     loss = self.nt_xent_criterion(z_struct, zls)
+                elif self.use_flatten:
+                    z_flatten = F.normalize(z_flatten, dim=1)
+                    loss = self.nt_xent_criterion(z_flatten, zls)
                 else:
                     z_images = F.normalize(z_images, dim=1)
                     loss = self.nt_xent_criterion(z_images, zls)
@@ -130,7 +145,6 @@ class SimCLR(object):
                     self.writer.add_scalar('train_loss', loss, global_step=n_iter)
 
                 n_iter += 1
-                
             if epoch_counter % self.config['eval_every_n_epochs'] == 0:
                 torch.save(model.state_dict(), os.path.join(model_checkpoints_folder, 'model_{}.pth'.format(epoch_counter)))
 
@@ -180,6 +194,7 @@ class SimCLR(object):
                 xls = data_dict['tokens'].to(self.device)
 
                 voxels, images, struct_tree = None, None, None
+                graph = None
 
                 if self.tri_modal:
                     if self.config['sparse_model']:
@@ -206,10 +221,20 @@ class SimCLR(object):
                         struct_tree_ = data_dict['struct_tree']
                         for obj in struct_tree_:
                             struct_tree.append(obj.to(self.device))
+                elif self.use_flatten:
+                    graph = {}
+                    graph['points'] = data_dict['points'].to(self.device)
+                    graph['edges'] = data_dict['edges']
+                    graph['N'] = data_dict['graph_size']
+                    graph['labels'] = data_dict['labels']
+                    graph['labels_num'] = data_dict['labels_num']
+                    graph['one_hot'] = data_dict['labels_one_hot'].to(self.device)
+                    voxels = data_dict['voxels'].to(self.device)
                 else:
                     images = data_dict['images'][:, ::self.multiplier].to(self.device)
 
-                z_voxels, z_struct, z_images, zls = model(voxels, struct_tree, images, xls)
+                #z_voxels, z_struct, z_images, zls = model(voxels, struct_tree, images, xls)
+                z_voxels, z_struct, z_flatten, z_images, zls = model(voxels, struct_tree, graph, images, xls)
                 zls = F.normalize(zls, dim=1)
                 if self.tri_modal:
                     z_voxels = F.normalize(z_voxels, dim=1)
@@ -221,6 +246,9 @@ class SimCLR(object):
                 elif self.use_struct:
                     z_struct = F.normalize(z_struct, dim=1)
                     loss = self.nt_xent_criterion(z_struct, zls)
+                elif self.use_flatten:
+                    z_flatten = F.normalize(z_flatten, dim=1)
+                    loss = self.nt_xent_criterion(z_flatten, zls)
                 else:
                     z_images = F.normalize(z_images, dim=1)
                     loss = self.nt_xent_criterion(z_images, zls)
@@ -235,8 +263,8 @@ class SimCLR(object):
         with torch.no_grad():
             train_loader, valid_loader, test_loader = self.dataset.get_data_loaders()
 
-            self.config["model"]["use_struct_pretrain"] = self.config["model"]["pretraining"]
-            model = ModelCLR(self.dset, self.config['dataset']['voxel_size'], self.config['sparse_model'], **self.config["model"]).to(self.device) #model is from retrieval_model which is the training model
+            # self.config["model"]["use_struct_pretrain"] = self.config["model"]["pretraining"]
+            model = ModelCLR(self.dset, self.config['dataset']['voxel_size'], self.config['sparse_model'], self.use_voxel_color, **self.config["model"]).to(self.device) #model is from retrieval_model which is the training model
             model = self._load_pre_trained_weights(model, log_dir)
             model.eval()
 
@@ -288,6 +316,14 @@ class SimCLR(object):
                         struct_tree_ = data_dict['struct_tree']
                         for obj in struct_tree_:
                             struct_tree.append(obj.to(self.device))
+                elif self.use_flatten:
+                    graph = {}
+                    graph['points'] = data_dict['points'].to(self.device)
+                    graph['edges'] = data_dict['edges']
+                    graph['N'] = data_dict['graph_size']
+                    graph['labels'] = data_dict['labels']
+                    graph['labels_num'] = data_dict['labels_num']
+                    graph['one_hot'] = data_dict['labels_one_hot'].to(self.device)
                 else:
                     images = data_dict['images'][:, ::self.multiplier].to(self.device)
 
@@ -402,7 +438,111 @@ class SimCLR(object):
                 pickle.dump(embeddings_dict, f)
                 print(f"saved output dict to {save_output_path}")
         return save_output_path
-    
+
+    def save_output_embed(self, log_dir, eval_loader='valid'):
+        with torch.no_grad():
+            
+            train_loader, valid_loader, test_loader = self.dataset.get_data_loaders()
+
+            model = ModelCLR(self.dset, self.config['dataset']['voxel_size'], self.config['sparse_model'], self.use_voxel_color, **self.config["model"]).to(self.device) #model is from retrieval_model which is the training model
+            model = self._load_pre_trained_weights(model, log_dir)
+            model.eval()
+
+            model_test_folder = os.path.join(log_dir, 'embed')
+            _save_config_file(model_test_folder, self.config)
+
+            print('Testing...')
+
+            loader = None
+            if eval_loader == 'valid':
+                print('Evaluating on val loader')
+                loader = valid_loader
+            elif eval_loader == 'test':
+                print('Evaluating on test loader')
+                loader = test_loader
+            elif eval_loader == 'train':
+                print('Evaluating on train loader')
+                loader = train_loader
+
+            embed_list = []
+            for data_dict in tqdm(loader):
+
+                xls = data_dict['tokens'].to(self.device)
+
+                voxels, images, struct_tree, z_flatten = None, None, None, None
+                data_tuple = (data_dict['model_id'], )
+
+                if self.tri_modal:
+                    if self.config['sparse_model']:
+                        voxels = {}
+                        voxels['locs'] = data_dict['voxels']['locs'].to(self.device)
+                        voxels['feats'] = data_dict['voxels']['feats'].to(self.device)
+                    else:
+                        voxels = data_dict['voxels'].to(self.device)
+                    images = data_dict['images'][:, ::self.multiplier].to(self.device)
+                elif self.use_voxel:
+                    if self.config['sparse_model']:
+                        voxels = {}
+                        voxels['locs'] = data_dict['voxels']['locs'].to(self.device)
+                        voxels['feats'] = data_dict['voxels']['feats'].to(self.device)
+                    else:
+                        voxels = data_dict['voxels'].to(self.device)
+                elif self.use_struct:
+                    if self.config['sparse_model']:
+                        struct_tree = {}
+                        struct_tree['locs'] = data_dict['voxels']['locs'].to(self.device)
+                        struct_tree['feats'] = data_dict['voxels']['feats'].to(self.device)
+                    else:
+                        struct_tree = []
+                        struct_tree_ = data_dict['struct_tree']
+                        for obj in struct_tree_:
+                            struct_tree.append(obj.to(self.device))
+                elif self.use_flatten:
+                    graph = {}
+                    graph['points'] = data_dict['points'].to(self.device)
+                    graph['edges'] = data_dict['edges']
+                    graph['N'] = data_dict['graph_size']
+                    graph['labels'] = data_dict['labels']
+                    graph['labels_num'] = data_dict['labels_num']
+                    graph['one_hot'] = data_dict['labels_one_hot'].to(self.device)
+                else:
+                    images = data_dict['images'][:, ::self.multiplier].to(self.device)
+
+                z_voxels, z_struct, z_flatten, z_images, zls = model(voxels, struct_tree, graph, images, xls)
+                zls = F.normalize(zls, dim=1)
+                
+                if self.tri_modal:
+                    z_voxels = F.normalize(z_voxels, dim=1)
+                    z_images = F.normalize(z_images, dim=1)
+                    shape_feature = ((z_images+z_voxels).detach().cpu().numpy())
+                    # shape_embeds.append(z_images.detach().cpu().numpy())
+                    # shape_embeds.append(z_voxels.detach().cpu().numpy())
+                    # shape_embeds.append((z_images+z_voxels).detach().cpu().numpy())
+                elif self.use_voxel:
+                    z_voxels = F.normalize(z_voxels, dim=1)
+                    shape_feature = (z_voxels.detach().cpu().numpy())
+                elif self.use_struct:
+                    z_struct = F.normalize(z_struct, dim=1)
+                    shape_feature = (z_struct.detach().cpu().numpy())
+                elif self.use_flatten:
+                    z_flatten = F.normalize(z_flatten, dim=1)
+                    shape_feature = (z_flatten.detach().cpu().numpy())
+                else:
+                    z_images = F.normalize(z_images, dim=1)
+                    shape_feature = (z_images.detach().cpu().numpy())
+
+                for i in range(shape_feature.shape[0]):
+                    data_tuple = (data_dict['model_id'][i], shape_feature[i], zls.detach().cpu().numpy()[i], data_dict['text'][i], data_dict['parnet_anno_id'][i])
+                    embed_list.append(data_tuple)
+
+            embeddings_dict = {}
+            embeddings_dict['ModelID_Fshape_Ftext_Text_PartnetID'] = embed_list
+            save_output_path = os.path.join(model_test_folder, eval_loader + '.pkl')
+            with open(save_output_path, 'wb') as f:
+                pickle.dump(embeddings_dict, f)
+                print(f"saved output dict to {save_output_path}")
+        return save_output_path
+
     def test(self, log_dir, clip=False, eval_loader='valid'):
         model_test_folder = os.path.join(log_dir, eval_loader)
         if not os.path.exists(model_test_folder):
@@ -425,3 +565,18 @@ class SimCLR(object):
         render_dir = os.path.join(os.path.dirname(embeddings_path), 'nearest_neighbor_renderings')
         pr_at_k = compute_cross_modal(dset, embeddings_dict, model_test_folder, metric, concise=render_dir)
         return pr_at_k
+
+    def inference(self, log_dir, clip=False, eval_loader='valid'):
+        model_test_folder = os.path.join(log_dir, 'embed')
+        if not os.path.exists(model_test_folder):
+            os.makedirs(model_test_folder)
+
+        if clip:
+            embeddings_path = self.save_output_clip(log_dir, eval_loader)
+        else:
+            if os.path.isfile(os.path.join(model_test_folder, eval_loader + '.pkl')):
+                embeddings_path = os.path.join(model_test_folder, eval_loader + '.pkl')
+            else:
+                embeddings_path = self.save_output_embed(log_dir, eval_loader)
+        
+        print('Model saved at:', embeddings_path)

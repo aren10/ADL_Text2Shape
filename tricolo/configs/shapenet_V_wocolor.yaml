@@ -1,5 +1,5 @@
 train: True
-batch_size: 32
+batch_size: 128
 epochs: 20
 eval_every_n_epochs: 2
 log_every_n_steps: 200
@@ -10,9 +10,9 @@ sparse_model: False
 
 model:
   out_dim: 512
-  use_voxel: False
-  use_struct: True
-  use_struct_pretrain: True
+  use_voxel: True
+  use_struct: False
+  use_struct_pretrain: False
   tri_modal: False
   num_images: 6
   image_cnn: 'resnet18'

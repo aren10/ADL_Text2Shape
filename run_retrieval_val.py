@@ -13,11 +13,11 @@ from tricolo.dataloader.dataloader import ClrDataLoader
 
 parser = argparse.ArgumentParser()
 parser.add_argument("--exp", type=str, default="None", help="Exp to evaluate")
-parser.add_argument("--split", type=str, help="Dataset split to evaluate on (valid or test)")
+parser.add_argument("--split", type=str, default="train", help="Dataset split to evaluate on (valid or test)")
 parser.add_argument('--clip', action='store_true', help='Use pretrained CLIP to evaluate')
 args = parser.parse_args()
 
-def main(load_dir):
+def main_metric(load_dir):
     if not args.clip:
         with open(load_dir + '/checkpoints/config.json', 'r') as f:
             config = json.load(f)
@@ -33,6 +33,7 @@ def main(load_dir):
         # config['log_dir'] = './logs/retrieval/clip'
 
 
+    # config['batch_size'] = 1
     dataset = ClrDataLoader(config['dset'], config['batch_size'], config['sparse_model'], **config['dataset'])
     simclr = SimCLR(dataset, config)
 
@@ -50,6 +51,26 @@ def main(load_dir):
 
     return rr_1, rr_5, ndcg_5
 
+def main(load_dir):
+    if not args.clip:
+        with open(load_dir + '/checkpoints/config.json', 'r') as f:
+            config = json.load(f)
+        config['train'] = False
+        config['log_dir'] = load_dir
+    else:
+        "Dummy config file"
+        config = yaml.load(open('./tricolo/configs/clip.yaml', "r"), Loader=yaml.FullLoader)
+        config['train'] = False
+        config['log_dir'] = './logs/retrieval/clip'
+    # config['batch_size'] = 1
+    dataset = ClrDataLoader(config['dset'], config['batch_size'], config['sparse_model'], **config['dataset'])
+    simclr = SimCLR(dataset, config)
+    simclr.inference(config['log_dir'], clip=args.clip, eval_loader='train')
+    simclr.inference(config['log_dir'], clip=args.clip, eval_loader='test')
+    simclr.inference(config['log_dir'], clip=args.clip, eval_loader='valid')
+
+    return
+
 if __name__ == "__main__":
     torch.multiprocessing.set_sharing_strategy('file_system')
     # path = './logs/retrieval/' + args.exp
@@ -60,8 +81,10 @@ if __name__ == "__main__":
     rr_5 = []
     ndcg_5 = []
     print(load_dirs)
+
     for load_dir in load_dirs:
-        _rr_1, _rr_5, _ndcg_5 = main(load_dir)
+        main(load_dir)
+        _rr_1, _rr_5, _ndcg_5 = main_metric(load_dir)
         torch.cuda.empty_cache()
 
         rr_1.append(_rr_1)
