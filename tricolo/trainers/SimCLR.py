@@ -235,6 +235,7 @@ class SimCLR(object):
         with torch.no_grad():
             train_loader, valid_loader, test_loader = self.dataset.get_data_loaders()
 
+            self.config["model"]["use_struct_pretrain"] = self.config["model"]["pretraining"]
             model = ModelCLR(self.dset, self.config['dataset']['voxel_size'], self.config['sparse_model'], **self.config["model"]).to(self.device) #model is from retrieval_model which is the training model
             model = self._load_pre_trained_weights(model, log_dir)
             model.eval()
