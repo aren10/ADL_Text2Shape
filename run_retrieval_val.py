@@ -23,11 +23,16 @@ def main_metric(load_dir):
             config = json.load(f)
         config['train'] = False
         config['log_dir'] = load_dir
+        print(config)
+        print("END CONGIF\n\n")
     else:
         "Dummy config file"
         config = yaml.load(open('./tricolo/configs/clip.yaml', "r"), Loader=yaml.FullLoader)
         config['train'] = False
         config['log_dir'] = './logs/retrieval/clip'
+        # config['log_dir'] = './logs/retrieval/clip'
+
+
     # config['batch_size'] = 1
     dataset = ClrDataLoader(config['dset'], config['batch_size'], config['sparse_model'], **config['dataset'])
     simclr = SimCLR(dataset, config)
@@ -69,7 +74,8 @@ def main(load_dir):
 
 if __name__ == "__main__":
     torch.multiprocessing.set_sharing_strategy('file_system')
-    path = './logs/retrieval/' + args.exp
+    # path = './logs/retrieval/' + args.exp
+    path = './logs/' + args.exp
     load_dirs = [path]
 
     rr_1 = []

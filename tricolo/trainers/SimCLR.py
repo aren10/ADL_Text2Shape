@@ -110,6 +110,7 @@ class SimCLR(object):
                     graph['labels'] = data_dict['labels']
                     graph['labels_num'] = data_dict['labels_num']
                     graph['one_hot'] = data_dict['labels_one_hot'].to(self.device)
+                    voxels = data_dict['voxels'].to(self.device)
                 else:
                     images = data_dict['images'][:, ::self.multiplier].to(self.device)
 
@@ -228,6 +229,7 @@ class SimCLR(object):
                     graph['labels'] = data_dict['labels']
                     graph['labels_num'] = data_dict['labels_num']
                     graph['one_hot'] = data_dict['labels_one_hot'].to(self.device)
+                    voxels = data_dict['voxels'].to(self.device)
                 else:
                     images = data_dict['images'][:, ::self.multiplier].to(self.device)
 
@@ -260,7 +262,8 @@ class SimCLR(object):
     def save_output(self, log_dir, eval_loader='valid'):
         with torch.no_grad():
             train_loader, valid_loader, test_loader = self.dataset.get_data_loaders()
-            
+
+            # self.config["model"]["use_struct_pretrain"] = self.config["model"]["pretraining"]
             model = ModelCLR(self.dset, self.config['dataset']['voxel_size'], self.config['sparse_model'], self.use_voxel_color, **self.config["model"]).to(self.device) #model is from retrieval_model which is the training model
             model = self._load_pre_trained_weights(model, log_dir)
             model.eval()

@@ -93,6 +93,8 @@ class ModelCLR(nn.Module):
                     raise NotImplementedError
                 else:
                     flatten_model = FlattenModel()
+                    #voxel_model = cnn_encoder(self.use_voxel_color, self.voxel_size, self.ef_dim, self.z_dim)
+                flatten_fc = nn.Sequential(nn.Linear(128+self.z_dim, self.out_dim),nn.ReLU(),nn.Linear(self.out_dim,self.out_dim))
                 if self.use_cross_attention:
                     flatten_attn = CrossAttention(256)
                     flatten_project = nn.Sequential(nn.Linear(64, 256),nn.ReLU(),nn.Linear(256,256))
@@ -101,7 +103,6 @@ class ModelCLR(nn.Module):
                     flatten_flat_proj = nn.AvgPool1d(MAX_PART_NUM)
                 else:
                     flatten_fc = nn.Sequential(nn.Linear(128, self.out_dim),nn.ReLU(),nn.Linear(self.out_dim,self.out_dim))
-
             else:
                 print('Training Bi-Modal Model')
                 svcnn = SVCNN(self.z_dim, pretraining=self.pretraining, cnn_name=self.cnn_name)
@@ -125,6 +126,13 @@ class ModelCLR(nn.Module):
 
         h_batch = torch.cat(h_list, dim=0)
         x = self.struct_fc(h_batch)
+        return x
+
+    def flatten_encoder2(self, xis, voxels):
+        h, _ = self.flatten_model(xis, get_graph_embeddings=True, get_node_embeddings=False)
+        h1 = self.voxel_model(voxels)
+        h1.squeeze()
+        x = self.flatten_fc(torch.cat([h, h1], dim=1))
         return x
 
     def flatten_encoder(self, xis, yis=None):
@@ -189,6 +197,7 @@ class ModelCLR(nn.Module):
         elif self.use_struct:
             z_struct = self.struct_encoder(struct_tree)
         elif self.use_flatten:
+            #z_flatten = self.flatten_encoder(graph, voxels)
             if self.use_cross_attention:
                 z_flatten, zls = self.flatten_encoder(graph, zls)
             else:

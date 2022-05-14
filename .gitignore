@@ -1,2 +1,15 @@
 /datasets/
 /logs/
+__pycache__/
+*.zip
+
+# embedding folders
+ShapeNet_G_CrossAttention/
+Shapenet_S/
+Shapenet_V_embed/
+Shapenet_V_wocolor/
+
+# renderings
+1_view_shade/
+1_view_texture_keyshot_1sec_alpha/
+
