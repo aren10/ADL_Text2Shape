@@ -1,4 +1,4 @@
-# TriCoLo: Trimodal Contrastive Loss for Fine-grained Text to Shape Retrieval
+# Exploring Structural Features for Text to Shape Retrieval
 This repo is contains the official implementation for the paper [TriCoLo: Trimodal Contrastive Loss for Fine-grained Text to Shape Retrieval](https://arxiv.org/pdf/2201.07366.pdf) ([*Project Page*](https://3dlg-hcvc.github.io/tricolo/)).
 
 ## Environment Installation
@@ -60,15 +60,18 @@ The directory structure should look like:
 ```
 This Repository
 |--datasets
-    |--ShapeNetCore.v1
-    |--ShapeNetCore.v2
+    |--partnet 
+        |--chair_geo
+        |--chair_hier
     |--text2shape
         |--shapenet
             |--nrrd_256_filter_div_32_solid
             |--nrrd_256_filter_div_64_solid
             |--nrrd_256_filter_div_128_solid
-        |--primitives
-            |--primitives.v2
+            |--partnet_chair.text.json
+            |--partnet_chair.train.json
+            |--partnet_chair.val.json
+            | Other meta files upzipped...
 ```
 
 ## Dataset Preprocessing

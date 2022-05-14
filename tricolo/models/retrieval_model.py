@@ -134,13 +134,16 @@ class ModelCLR(nn.Module):
             for i in range(len(h_list)):
                 h_array[i, :h_list[i].shape[0]] = h_list[i]
             h = self.flatten_project(h_array) #[B, Max, 256]
+            
             yis = yis.transpose(0, 1)
             h = torch.cat((h, yis), dim=1) #[B, Max+L, 256]
+            
             h = self.flatten_attn(h).transpose(1, 2)
-            h = self.flatten_flat_proj(h).squeeze()
+            h = self.flatten_flat_proj(h).squeeze() # mean pool
             x = self.flatten_fc(h)
+            
             yis = yis.transpose(1, 2)
-            h = self.flatten_text_proj(yis).squeeze()
+            h = self.flatten_text_proj(yis).squeeze() # mean pool
             y = torch.tanh(self.text_fc(h))
             return x, y
         else:

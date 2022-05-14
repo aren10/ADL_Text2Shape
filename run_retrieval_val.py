@@ -58,6 +58,7 @@ def main(load_dir):
         config['train'] = False
         config['log_dir'] = './logs/retrieval/clip'
     # config['batch_size'] = 1
+    
     dataset = ClrDataLoader(config['dset'], config['batch_size'], config['sparse_model'], **config['dataset'])
     simclr = SimCLR(dataset, config)
     simclr.inference(config['log_dir'], clip=args.clip, eval_loader='train')

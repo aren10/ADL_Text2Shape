@@ -1,1 +1,1 @@
-python run_retrieval_val.py --exp May11_18-25-00
+python run_retrieval_val.py --exp ShapeNet_V
